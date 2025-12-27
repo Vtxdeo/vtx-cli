@@ -1,4 +1,5 @@
 mod builder;
+mod checker;
 mod cli;
 mod config;
 mod packager;
@@ -8,13 +9,10 @@ use builder::Builder;
 use clap::Parser;
 use cli::{Cli, Commands};
 use colored::*;
+use std::path::Path;
 use std::time::Instant;
 
 /// CLI 主入口
-///
-/// - 负责参数解析
-/// - 捕获错误并标准输出
-/// - 调度构建主流程
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
@@ -34,7 +32,9 @@ fn run(cli: Cli) -> Result<()> {
             package,
             target,
             release,
-        } => execute_build_pipeline(package, &target, release),
+            force,
+            debug,
+        } => execute_build_pipeline(package, &target, release, force, debug),
     }
 }
 
@@ -42,11 +42,18 @@ fn run(cli: Cli) -> Result<()> {
 ///
 /// 流程结构：
 /// 1. 初始化配置与上下文
-/// 2. 环境预检
-/// 3. 编译源代码
-/// 4. 产物路径解析
-/// 5. 编码打包为 VTX 组件
-fn execute_build_pipeline(package_arg: Option<String>, target: &str, release: bool) -> Result<()> {
+/// 2. SDK 兼容性检查 (针对 Rust)
+/// 3. 环境预检
+/// 4. 编译源代码
+/// 5. 产物路径解析
+/// 6. 编码打包为 VTX 组件并校验
+fn execute_build_pipeline(
+    package_arg: Option<String>,
+    target: &str,
+    release: bool,
+    force: bool,
+    debug: bool,
+) -> Result<()> {
     let start_time = Instant::now();
 
     // --- 1. 初始化配置 ---
@@ -71,6 +78,19 @@ fn execute_build_pipeline(package_arg: Option<String>, target: &str, release: bo
         language
     );
 
+    // --- 2. SDK 兼容性检查 ---
+    if language.to_lowercase() == "rust" || language.to_lowercase() == "rs" {
+        if debug {
+            println!("{} Checking SDK compatibility...", "[DEBUG]".dimmed());
+        }
+        checker::check_rust_sdk_version(Path::new("."), force)?;
+    } else if debug {
+        println!(
+            "{} Skipping SDK check for non-Rust project.",
+            "[DEBUG]".dimmed()
+        );
+    }
+
     // 实例化对应语言的构建器策略
     let builder: Box<dyn Builder> = match language.to_lowercase().as_str() {
         "rust" | "rs" => Box::new(builder::rust::RustBuilder),
@@ -82,25 +102,36 @@ fn execute_build_pipeline(package_arg: Option<String>, target: &str, release: bo
         unsupported => anyhow::bail!("Unsupported language identifier: {}", unsupported),
     };
 
-    // --- 2. 环境预检 ---
+    // --- 3. 环境预检 ---
     builder
         .check_env()
         .context("Environment validation failed")?;
 
-    // --- 3. 编译阶段 ---
+    // --- 4. 编译阶段 ---
+    // 如果处于 debug 模式，强制编译为 debug 版本以保留符号表
+    let actual_release = if debug {
+        println!(
+            "{} Debug mode enabled: forcing non-release build.",
+            "[INFO]".cyan()
+        );
+        false
+    } else {
+        release
+    };
+
     println!(
         "{} Compiling target: {} (release={})",
         "[INFO]".cyan(),
         target,
-        release
+        actual_release
     );
     builder
-        .build(&package_name, target, release)
+        .build(&package_name, target, actual_release)
         .context("Source compilation failed")?;
 
-    // --- 4. 产物路径解析 ---
+    // --- 5. 产物路径解析 ---
     let wasm_path = builder
-        .find_output(&package_name, target, release)
+        .find_output(&package_name, target, actual_release)
         .context("Unable to locate compiled artifact")?;
 
     println!(
@@ -109,11 +140,15 @@ fn execute_build_pipeline(package_arg: Option<String>, target: &str, release: bo
         wasm_path.display()
     );
 
-    // --- 5. 编码与组件打包 ---
-    println!("{} Encoding to VTX component...", "[INFO]".cyan());
+    // --- 6. 编码与组件打包 ---
+    println!(
+        "{} Encoding and validating VTX component...",
+        "[INFO]".cyan()
+    );
 
-    let component_bytes =
-        packager::process_wasm(&wasm_path).context("Component packaging failed")?;
+    // 传入 debug 和 force 参数进行内部逻辑控制
+    let component_bytes = packager::process_wasm(&wasm_path, debug, force)
+        .context("Component packaging or validation failed")?;
 
     let vtx_path = packager::write_vtx_file(&wasm_path, &component_bytes)
         .context("Failed to write final artifact")?;
