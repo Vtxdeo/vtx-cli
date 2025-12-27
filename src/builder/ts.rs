@@ -1,0 +1,116 @@
+use super::Builder;
+use crate::config::ProjectInfo;
+use anyhow::{Context, Result};
+use std::path::{Path, PathBuf};
+use std::process::Command;
+
+/// TS/JS 构建器 (NPM 生态)
+///
+/// 职责：代理执行 NPM Scripts。
+/// 依赖：系统需安装 Node.js 和 npm。
+pub struct TsBuilder {
+    pub config: Option<ProjectInfo>,
+}
+
+impl TsBuilder {
+    pub fn new(config: Option<ProjectInfo>) -> Self {
+        Self { config }
+    }
+}
+
+impl Builder for TsBuilder {
+    fn check_env(&self) -> Result<()> {
+        let npm_cmd = if cfg!(target_os = "windows") {
+            "npm.cmd"
+        } else {
+            "npm"
+        };
+        Command::new(npm_cmd)
+            .arg("-v")
+            .output()
+            .context("npm not found")?;
+        Ok(())
+    }
+
+    fn build(&self, _package: &str, _target: &str, _release: bool) -> Result<()> {
+        let npm_cmd = if cfg!(target_os = "windows") {
+            "npm.cmd"
+        } else {
+            "npm"
+        };
+
+        // 1. 优先执行用户配置的自定义命令
+        if let Some(cmd) = self.config.as_ref().and_then(|c| c.build_cmd.as_ref()) {
+            let (shell, arg) = if cfg!(target_os = "windows") {
+                ("cmd", "/C")
+            } else {
+                ("sh", "-c")
+            };
+            let status = Command::new(shell).args([arg, cmd]).status()?;
+            if !status.success() {
+                anyhow::bail!("Custom JS/TS build command failed");
+            }
+            return Ok(());
+        }
+
+        // 2. 检查依赖完整性 (Side Effect: 可能触发网络 IO)
+        if Path::new("package.json").exists() && !Path::new("node_modules").exists() {
+            println!("[VTX] node_modules not found, running npm install...");
+            Command::new(npm_cmd).arg("install").status()?;
+        }
+
+        // 3. 执行标准 npm run build
+        println!("[VTX] Executing: {} run build", npm_cmd);
+        let status = Command::new(npm_cmd).arg("run").arg("build").status()?;
+
+        if !status.success() {
+            anyhow::bail!("npm run build failed");
+        }
+
+        Ok(())
+    }
+
+    fn find_output(&self, package: &str, _target: &str, _release: bool) -> Result<PathBuf> {
+        // 策略1: 优先查找配置指定的 output_dir
+        if let Some(dir) = self.config.as_ref().and_then(|c| c.output_dir.as_ref()) {
+            let p = Path::new(dir).join(format!("{}.wasm", package));
+            if p.exists() {
+                return Ok(p);
+            }
+
+            // 降级策略: 目录内模糊匹配
+            if let Ok(entries) = std::fs::read_dir(dir) {
+                for entry in entries.flatten() {
+                    if entry.path().extension().map_or(false, |e| e == "wasm") {
+                        return Ok(entry.path());
+                    }
+                }
+            }
+        }
+
+        // 策略2: 标准目录启发式搜索
+        let search_dirs = vec!["build", "dist", "target", "."];
+        let candidates = vec![
+            format!("{}.wasm", package),
+            "release.wasm".to_string(),
+            "index.wasm".to_string(),
+        ];
+
+        for dir in search_dirs {
+            let dir_path = Path::new(dir);
+            if !dir_path.exists() {
+                continue;
+            }
+            for name in &candidates {
+                let p = dir_path.join(name);
+                if p.exists() {
+                    return Ok(p);
+                }
+            }
+        }
+
+        anyhow::bail!(
+            "Wasm output not found. Please set 'output_dir' in vtx.toml or check npm build script."
+        )
+    }
+}

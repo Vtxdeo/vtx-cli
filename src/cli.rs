@@ -15,9 +15,9 @@ pub struct Cli {
 pub enum Commands {
     /// 构建并打包插件（wasm -> component -> .vtx）
     Build {
-        /// 工作区包名，例如：vtx-plugin-auth-basic
+        /// 工作区包名。如果未指定，将尝试从 vtx.toml 配置文件中读取。
         #[arg(short, long)]
-        package: String,
+        package: Option<String>,
 
         /// 构建目标，默认值为 "wasm32-wasip1"
         #[arg(long, default_value = "wasm32-wasip1")]

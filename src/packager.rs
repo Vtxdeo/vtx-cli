@@ -5,72 +5,84 @@ use wasmparser::{Chunk, Parser as WasmParser, Payload};
 use wit_component::ComponentEncoder;
 
 use wasi_preview1_component_adapter_provider::{
-    WASI_SNAPSHOT_PREVIEW1_ADAPTER_NAME,
-    WASI_SNAPSHOT_PREVIEW1_COMMAND_ADAPTER,
+    WASI_SNAPSHOT_PREVIEW1_ADAPTER_NAME, WASI_SNAPSHOT_PREVIEW1_COMMAND_ADAPTER,
     WASI_SNAPSHOT_PREVIEW1_REACTOR_ADAPTER,
 };
 
-/// 核心流程：读取 Wasm -> 清理元数据 -> 注入 Adapter -> 编码组件
+/// 核心打包流程：Wasm -> VTX Component
 ///
-/// # 流程
-/// - 读取 wasm 文件并清理元数据
-/// - 根据模块的特点选择合适的 adapter
-/// - 编码并返回组件字节
+/// # 流程说明
+/// 1. 读取原始 Wasm 二进制流。
+/// 2. 清理非必要的元数据（如 wit-bindgen 残留），减小体积并避免冲突。
+/// 3. 智能选择 Adapter（Command vs Reactor 模式）。
+/// 4. 编码为 WebAssembly Component Model。
+///
+/// # 参数
+/// - `input_wasm_path`: 原始 Wasm 文件路径。
+///
+/// # 返回值
+/// - 成功：返回编码后的组件字节流。
+/// - 失败：返回包含上下文的错误信息。
 pub fn process_wasm(input_wasm_path: &Path) -> Result<Vec<u8>> {
-    // 读取 Wasm 模块字节
     let module_bytes = std::fs::read(input_wasm_path).with_context(|| {
-        format!("failed to read wasm from: {}", input_wasm_path.display())
+        format!(
+            "Failed to read raw wasm from: {}",
+            input_wasm_path.display()
+        )
     })?;
 
-    // 1. 清理：去除 wit-bindgen 元数据
+    // 步骤 1: 元数据清理
     let cleaned_module = strip_exports_removed_bindgen_section(&module_bytes)?;
 
-    // 2. 选择适当的 Adapter（根据模块内容决定）
+    // 步骤 2: Adapter 选择
     let (adapter_bytes, adapter_kind) = select_wasi_preview1_adapter(&cleaned_module)?;
-    println!(
-        "{} Using WASI preview1 {} adapter",
-        "[VTX]".dimmed(),
-        adapter_kind.yellow()
-    );
+    // 仅在 verbose 模式下建议开启此日志，此处保留关键信息
+    println!("{} Adapting module as: {}", "[INFO]".dimmed(), adapter_kind);
 
-    // 3. 编码组件：将 Wasm 模块与 Adapter 编码成组件
-    ComponentEncoder::default()
+    // 步骤 3: 组件编码
+    // ComponentEncoder 负责将 Module + Adapter 链接为 Component
+    let component_bytes = ComponentEncoder::default()
         .module(&cleaned_module)
-        .context("Failed to encode module")?
+        .context("Failed to encode module into component")?
         .adapter(WASI_SNAPSHOT_PREVIEW1_ADAPTER_NAME, adapter_bytes)
-        .context("Failed to add WASI preview1 adapter")?
-        .validate(true) // 校验组件有效性
+        .context("Failed to inject WASI preview1 adapter")?
+        .validate(true)
         .encode()
         .map_err(|e| {
             anyhow::anyhow!(
-                "Failed to finalize component encoding: {}\n\
-                 Hint: Check wit-bindgen version compatibility or duplicate imports.",
+                "Component encoding error: {}\nEnsure wit-bindgen version matches adapter requirements.",
                 e
             )
-        })
+        })?;
+
+    Ok(component_bytes)
 }
 
-/// 写入 .vtx 文件
+/// 写入 VTX 格式文件
 ///
-/// # 功能
-/// - 将编码后的组件字节写入到 `.vtx` 文件
-///
-/// # 参数
-/// - `input_wasm_path`: 输入的 wasm 文件路径
-/// - `component_bytes`: 编码后的组件字节
-pub fn write_vtx_file(input_wasm_path: &Path, component_bytes: &[u8]) -> Result<PathBuf> {
-    // 生成输出路径，扩展名为 .vtx
-    let out_path = input_wasm_path.with_extension("vtx");
-    // 将组件字节编码为 VTX 格式并写入文件
+/// # 行为
+/// - 在输入文件同目录下生成 `.vtx` 文件。
+/// - 使用 vtx-format 库进行封装（增加头部/版本信息）。
+pub fn write_vtx_file(input_path: &Path, component_bytes: &[u8]) -> Result<PathBuf> {
+    let out_path = input_path.with_extension("vtx");
+
+    // 调用 vtx_format 库进行最终封装
+    // 假设 vtx_format::encode_v1 负责添加 Magic Number 和 Version Header
     let buf = vtx_format::encode_v1(component_bytes);
+
     std::fs::write(&out_path, buf)
-        .with_context(|| format!("failed to write vtx: {}", out_path.display()))?;
+        .with_context(|| format!("Failed to write vtx artifact: {}", out_path.display()))?;
+
     Ok(out_path)
 }
 
-// --- 内部辅助函数 ---
+// --- 内部辅助逻辑 ---
 
-/// 根据模块的内容选择 WASI Preview1 Adapter（Command 或 Reactor）
+/// 根据模块导出表特征选择 WASI Adapter
+///
+/// 规则：
+/// - 包含 `_start` 导出 -> Command Adapter (类似可执行程序)
+/// - 否则 -> Reactor Adapter (类似库/服务)
 fn select_wasi_preview1_adapter(module: &[u8]) -> Result<(&'static [u8], &'static str)> {
     if module_exports_start(module)? {
         Ok((WASI_SNAPSHOT_PREVIEW1_COMMAND_ADAPTER, "command"))
@@ -79,7 +91,9 @@ fn select_wasi_preview1_adapter(module: &[u8]) -> Result<(&'static [u8], &'stati
     }
 }
 
-/// 检查模块是否包含 `_start` 导出项
+/// 探测 Wasm 模块是否导出 `_start` 符号
+///
+/// 复杂度：线性扫描 Export Section，O(N)
 fn module_exports_start(module: &[u8]) -> Result<bool> {
     let mut parser = WasmParser::new(0);
     let mut offset = 0usize;
@@ -88,26 +102,28 @@ fn module_exports_start(module: &[u8]) -> Result<bool> {
         let chunk = parser.parse(&module[offset..], true)?;
         let (consumed, payload) = match chunk {
             Chunk::Parsed { consumed, payload } => (consumed, payload),
-            _ => return Ok(false),
+            _ => return Ok(false), // 解析结束或错误
         };
         offset += consumed;
 
         if let Payload::ExportSection(reader) = payload {
             for item in reader {
-                if item?.name == "_start" { return Ok(true); }
+                if item?.name == "_start" {
+                    return Ok(true);
+                }
             }
         }
     }
     Ok(false)
 }
 
-/// 去除 wit-bindgen 元数据部分
+/// 清理 wit-bindgen 生成的特定 Custom Section
+///
+/// 目的：解决由不同版本绑定工具生成的元数据冲突问题，确保 Adapter 注入成功。
 fn strip_exports_removed_bindgen_section(module: &[u8]) -> Result<Vec<u8>> {
     let mut out = Vec::with_capacity(module.len());
     let mut parser = WasmParser::new(0);
     let mut offset = 0usize;
-    let mut removed = 0usize;
-    let mut unhandled_warned = false;
 
     while offset < module.len() {
         let chunk = parser.parse(&module[offset..], true)?;
@@ -121,32 +137,19 @@ fn strip_exports_removed_bindgen_section(module: &[u8]) -> Result<Vec<u8>> {
 
         if let Payload::CustomSection(cs) = &payload {
             let name = cs.name();
-            // 检查并移除 wit-bindgen 元数据部分
-            if name.starts_with("component-type:wit-bindgen:") {
-                if name.contains("with-all-of-its-exports-removed") {
-                    removed += 1;
-                    keep = false;
-                } else if !unhandled_warned {
-                    println!(
-                        "{} WARN: Found unhandled wit-bindgen section: '{}' ",
-                        "[VTX]".yellow(), name
-                    );
-                    unhandled_warned = true;
-                }
+            // 识别并移除导致冲突的 bindgen section
+            if name.starts_with("component-type:wit-bindgen:")
+                && name.contains("with-all-of-its-exports-removed")
+            {
+                keep = false;
             }
         }
 
-        // 保留其他部分
-        if keep { out.extend_from_slice(raw); }
+        if keep {
+            out.extend_from_slice(raw);
+        }
         offset += consumed;
     }
 
-    // 输出已移除的 wit-bindgen 元数据数量
-    if removed > 0 {
-        println!(
-            "{} Stripped {} wit-bindgen metadata section(s).",
-            "[VTX]".dimmed(), removed.to_string().yellow()
-        );
-    }
     Ok(out)
 }

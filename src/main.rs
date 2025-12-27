@@ -1,68 +1,130 @@
 mod builder;
 mod cli;
+mod config;
 mod packager;
 
-use anyhow::Result;
+use anyhow::{Context, Result};
+use builder::Builder;
 use clap::Parser;
-use colored::*;
 use cli::{Cli, Commands};
+use colored::*;
+use std::time::Instant;
 
-/// 主程序入口，解析命令行参数并调用相应的处理函数
+/// CLI 主入口
+///
+/// - 负责参数解析
+/// - 捕获错误并标准输出
+/// - 调度构建主流程
 fn main() -> Result<()> {
-    // 解析命令行参数
     let cli = Cli::parse();
 
-    // 根据命令类型调用相应的处理函数
+    // 捕获顶层错误，格式化输出，避免展示 Rust 栈信息
+    if let Err(e) = run(cli) {
+        eprintln!("{} {}", "[ERROR]".red().bold(), e);
+        std::process::exit(1);
+    }
+
+    Ok(())
+}
+
+/// 执行业务主流程
+fn run(cli: Cli) -> Result<()> {
     match cli.command {
         Commands::Build {
             package,
             target,
             release,
-        } => handle_build(&package, &target, release),
+        } => execute_build_pipeline(package, &target, release),
     }
 }
 
-/// 处理构建命令
+/// 执行标准构建流水线
 ///
-/// # 参数
-/// - `package`: 构建的包名
-/// - `target`: 构建的目标架构
-/// - `release`: 是否启用发布模式（release mode）
-///
-/// # 错误处理
-/// - 构建过程中任何步骤失败都会返回错误
-fn handle_build(package: &str, target: &str, release: bool) -> Result<()> {
-    // 输出构建信息
+/// 流程结构：
+/// 1. 初始化配置与上下文
+/// 2. 环境预检
+/// 3. 编译源代码
+/// 4. 产物路径解析
+/// 5. 编码打包为 VTX 组件
+fn execute_build_pipeline(package_arg: Option<String>, target: &str, release: bool) -> Result<()> {
+    let start_time = Instant::now();
+
+    // --- 1. 初始化配置 ---
+    let config = config::load().ok(); // 配置可选，允许纯 CLI 模式
+    let project_info = config.as_ref().map(|c| c.project.clone());
+
+    // 包名优先级：命令行 > 配置文件 > 报错
+    let package_name = package_arg
+        .or_else(|| project_info.as_ref().map(|p| p.name.clone()))
+        .context("Unable to resolve package name. Please specify via --package or vtx.toml.")?;
+
+    // 语言识别：默认使用 Rust
+    let language = project_info
+        .as_ref()
+        .map(|p| p.language.as_str())
+        .unwrap_or("rust");
+
     println!(
-        "{} Starting build for package: {}",
-        "[VTX]".green(),
-        package.yellow()
+        "{} Building package: {} [{}]",
+        "[VTX]".green().bold(),
+        package_name,
+        language
     );
-    println!("{} Target: {}, Release: {}", "[VTX]".dimmed(), target, release);
 
-    // 1. 执行 Cargo 编译
-    println!("{}", "[VTX] Compiling to WebAssembly...".cyan());
-    builder::cargo_build(package, target, release)?;
+    // 实例化对应语言的构建器策略
+    let builder: Box<dyn Builder> = match language.to_lowercase().as_str() {
+        "rust" | "rs" => Box::new(builder::rust::RustBuilder),
+        "go" | "tinygo" => Box::new(builder::go::GoBuilder),
+        "ts" | "typescript" | "js" | "node" => Box::new(builder::ts::TsBuilder::new(project_info)),
+        "py" | "python" => Box::new(builder::python::PythonBuilder::new(project_info)),
+        "php" => Box::new(builder::php::PhpBuilder::new(project_info)),
+        "lua" => Box::new(builder::lua::LuaBuilder::new(project_info)),
+        unsupported => anyhow::bail!("Unsupported language identifier: {}", unsupported),
+    };
 
-    // 2. 查找构建产物（WebAssembly 文件）
-    let wasm_path = builder::find_wasm_output(package, target, release)?;
+    // --- 2. 环境预检 ---
+    builder
+        .check_env()
+        .context("Environment validation failed")?;
+
+    // --- 3. 编译阶段 ---
     println!(
-        "{} Found artifact: {}",
-        "[VTX]".green(),
-        wasm_path.display().to_string().yellow()
+        "{} Compiling target: {} (release={})",
+        "[INFO]".cyan(),
+        target,
+        release
+    );
+    builder
+        .build(&package_name, target, release)
+        .context("Source compilation failed")?;
+
+    // --- 4. 产物路径解析 ---
+    let wasm_path = builder
+        .find_output(&package_name, target, release)
+        .context("Unable to locate compiled artifact")?;
+
+    println!(
+        "{} Artifact located at: {}",
+        "[INFO]".cyan(),
+        wasm_path.display()
     );
 
-    // 3. 打包处理：Strip -> Adapter -> Component
-    println!("{}", "[VTX] Packaging VTX plugin...".cyan());
-    let component_bytes = packager::process_wasm(&wasm_path)?;
+    // --- 5. 编码与组件打包 ---
+    println!("{} Encoding to VTX component...", "[INFO]".cyan());
 
-    // 4. 写入最终格式文件
-    let vtx_path = packager::write_vtx_file(&wasm_path, &component_bytes)?;
-    println![
-        "{} VTX package generated successfully:\n      {}",
-        "[VTX]".green(),
-        vtx_path.display().to_string().yellow()
-    ];
+    let component_bytes =
+        packager::process_wasm(&wasm_path).context("Component packaging failed")?;
+
+    let vtx_path = packager::write_vtx_file(&wasm_path, &component_bytes)
+        .context("Failed to write final artifact")?;
+
+    let duration = start_time.elapsed();
+    println!(
+        "{} Build completed in {:.2}s → {}",
+        "[DONE]".green().bold(),
+        duration.as_secs_f64(),
+        vtx_path.display()
+    );
 
     Ok(())
 }
