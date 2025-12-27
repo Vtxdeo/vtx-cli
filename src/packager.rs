@@ -13,9 +13,10 @@ use wasi_preview1_component_adapter_provider::{
 /// 流程说明：
 /// 1. 读取原始 Wasm 二进制流。
 /// 2. 清理非必要的元数据。
-/// 3. 强制注入 Reactor Adapter。
-/// 4. 编码为 WebAssembly Component Model。
-/// 5. 执行契约校验。
+/// 3. 检查用户代码的 Import 依赖（发出警告而非阻断）。
+/// 4. 强制注入 Reactor Adapter。
+/// 5. 编码为 WebAssembly Component Model。
+/// 6. 执行契约校验（Export 检查）。
 ///
 /// 参数：
 /// - `input_wasm_path`: 原始 Wasm 文件路径。
@@ -30,16 +31,21 @@ pub fn process_wasm(input_wasm_path: &Path, debug: bool, force: bool) -> Result<
     })?;
 
     // 步骤 1: 元数据清理
+    // 这一步之后得到的 cleaned_module 代表了用户编译出的核心逻辑
     let cleaned_module = strip_exports_removed_bindgen_section(&module_bytes)?;
 
-    // 步骤 2: Adapter 注入
+    // 步骤 2: 依赖安全性扫描 (Import Check)
+    // 即使 force=false，这里也只输出警告，不阻断构建，保障开放性
+    validate_user_imports(&cleaned_module, debug);
+
+    // 步骤 3: Adapter 注入
     // VTX 插件必须运行在 Reactor 模式下，强制使用 Reactor Adapter
     let adapter_bytes = WASI_SNAPSHOT_PREVIEW1_REACTOR_ADAPTER;
     if debug {
         println!("{} Injecting WASI Reactor Adapter", "[DEBUG]".dimmed());
     }
 
-    // 步骤 3: 组件编码
+    // 步骤 4: 组件编码
     let component_bytes = ComponentEncoder::default()
         .module(&cleaned_module)
         .context("Failed to encode module into component")?
@@ -54,15 +60,11 @@ pub fn process_wasm(input_wasm_path: &Path, debug: bool, force: bool) -> Result<
             )
         })?;
 
-    // 步骤 4: 契约校验
+    // 步骤 5: 契约校验 (Export Check)
     // 检查生成的组件是否符合 VTX Kernel 的接口要求
     if let Err(e) = validate_contract(&component_bytes, debug) {
         if force {
-            println!(
-                "{} Contract validation failed but --force is enabled: {}",
-                "[WARN]".yellow(),
-                e
-            );
+            println!("{} Contract validation failed but --force is enabled: {}", "[WARN]".yellow(), e);
         } else {
             return Err(e);
         }
@@ -84,6 +86,53 @@ pub fn write_vtx_file(input_path: &Path, component_bytes: &[u8]) -> Result<PathB
 
 // --- 内部辅助逻辑 ---
 
+/// 验证用户模块导入的依赖是否在已知白名单中
+///
+/// 目的：
+/// 提前发现插件是否依赖了内核可能不支持的 Host Function。
+/// 采取“信任但核实”策略，对未知 Import 仅发出警告。
+fn validate_user_imports(module_bytes: &[u8], debug: bool) {
+    let mut parser = WasmParser::new(0);
+
+    // 白名单命名空间前缀
+    // 任何以这些字符串开头的 import module 都被认为是安全的或由 Adapter 处理的
+    let trusted_namespaces = [
+        "wasi_snapshot_preview1", // 标准 WASI Preview 1
+        "wasi:",                  // 标准 WASI (Component Model)
+        "vtx:",                   // VTX SDK 官方接口
+        "vtx",                    // VTX SDK 旧版兼容
+        "__wbindgen_",            // Rust wasm-bindgen 内部使用的 intrinsics
+    ];
+
+    for payload in parser.parse_all(module_bytes) {
+        if let Ok(Payload::ImportSection(reader)) = payload {
+            for import in reader {
+                if let Ok(import) = import {
+                    let module = import.module;
+                    let field = import.name;
+
+                    // 检查是否在白名单中
+                    let is_trusted = trusted_namespaces.iter().any(|ns| module.starts_with(ns));
+
+                    if !is_trusted {
+                        println!(
+                            "{} Unknown Import Detected: '{}::{}'\n  \
+                             {} This interface is not part of the standard VTX Kernel or WASI spec.\n  \
+                             If the kernel does not provide this host function, the plugin will crash at runtime.",
+                            "[WARN]".yellow(),
+                            module,
+                            field,
+                            "->".yellow()
+                        );
+                    } else if debug {
+                        println!("{} Trusted import: {}::{}", "[DEBUG]".dimmed(), module, field);
+                    }
+                }
+            }
+        }
+    }
+}
+
 /// 验证生成的组件是否导出了内核要求的接口
 ///
 /// 检查项：
@@ -99,7 +148,7 @@ fn validate_contract(component_bytes: &[u8], debug: bool) -> Result<()> {
         if let Ok(Payload::ComponentExportSection(reader)) = payload {
             for export in reader {
                 let export = export?;
-                // 修正：直接访问元组结构体的第一个字段获取名称
+                // 直接访问元组结构体的第一个字段获取名称
                 let name = export.name.0;
 
                 if debug {
@@ -108,14 +157,9 @@ fn validate_contract(component_bytes: &[u8], debug: bool) -> Result<()> {
 
                 // 检查 WIT 定义的关键入口
                 // 这些名字对应 SDK `world plugin` 中的 export 定义
-                // 注意：根据 wit-bindgen 版本不同，可能会带有接口前缀，这里做模糊匹配
                 match name {
-                    "handle" | "vtx:api/plugin/handle" | "vtx:api/plugin#handle" => {
-                        found_handle = true
-                    }
-                    "get-manifest"
-                    | "vtx:api/plugin/get-manifest"
-                    | "vtx:api/plugin#get-manifest" => found_manifest = true,
+                    "handle" | "vtx:api/plugin/handle" | "vtx:api/plugin#handle" => found_handle = true,
+                    "get-manifest" | "vtx:api/plugin/get-manifest" | "vtx:api/plugin#get-manifest" => found_manifest = true,
                     _ => {}
                 }
             }
