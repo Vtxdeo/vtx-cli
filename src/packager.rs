@@ -64,11 +64,7 @@ pub fn process_wasm(input_wasm_path: &Path, debug: bool, force: bool) -> Result<
     // 检查生成的组件是否符合 VTX Kernel 的接口要求
     if let Err(e) = validate_contract(&component_bytes, debug) {
         if force {
-            println!(
-                "{} Contract validation failed but --force is enabled: {}",
-                "[WARN]".yellow(),
-                e
-            );
+            println!("{} Contract validation failed but --force is enabled: {}", "[WARN]".yellow(), e);
         } else {
             return Err(e);
         }
@@ -96,7 +92,7 @@ pub fn write_vtx_file(input_path: &Path, component_bytes: &[u8]) -> Result<PathB
 /// 提前发现插件是否依赖了内核可能不支持的 Host Function。
 /// 采取“信任但核实”策略，对未知 Import 仅发出警告。
 fn validate_user_imports(module_bytes: &[u8], debug: bool) {
-    let mut parser = WasmParser::new(0);
+    let parser = WasmParser::new(0);
 
     // 白名单命名空间前缀
     // 任何以这些字符串开头的 import module 都被认为是安全的或由 Adapter 处理的
@@ -110,32 +106,25 @@ fn validate_user_imports(module_bytes: &[u8], debug: bool) {
 
     for payload in parser.parse_all(module_bytes) {
         if let Ok(Payload::ImportSection(reader)) = payload {
-            for import in reader {
-                if let Ok(import) = import {
-                    let module = import.module;
-                    let field = import.name;
+            for import in reader.into_iter().flatten() {
+                let module = import.module;
+                let field = import.name;
 
-                    // 检查是否在白名单中
-                    let is_trusted = trusted_namespaces.iter().any(|ns| module.starts_with(ns));
+                // 检查是否在白名单中
+                let is_trusted = trusted_namespaces.iter().any(|ns| module.starts_with(ns));
 
-                    if !is_trusted {
-                        println!(
-                            "{} Unknown Import Detected: '{}::{}'\n  \
-                             {} This interface is not part of the standard VTX Kernel or WASI spec.\n  \
-                             If the kernel does not provide this host function, the plugin will crash at runtime.",
-                            "[WARN]".yellow(),
-                            module,
-                            field,
-                            "->".yellow()
-                        );
-                    } else if debug {
-                        println!(
-                            "{} Trusted import: {}::{}",
-                            "[DEBUG]".dimmed(),
-                            module,
-                            field
-                        );
-                    }
+                if !is_trusted {
+                    println!(
+                        "{} Unknown Import Detected: '{}::{}'\n  \
+                            {} This interface is not part of the standard VTX Kernel or WASI spec.\n  \
+                            If the kernel does not provide this host function, the plugin will crash at runtime.",
+                        "[WARN]".yellow(),
+                        module,
+                        field,
+                        "->".yellow()
+                    );
+                } else if debug {
+                    println!("{} Trusted import: {}::{}", "[DEBUG]".dimmed(), module, field);
                 }
             }
         }
@@ -148,7 +137,7 @@ fn validate_user_imports(module_bytes: &[u8], debug: bool) {
 /// 1. 是否导出 `handle` (HTTP 处理入口)
 /// 2. 是否导出 `get-manifest` (元数据获取入口)
 fn validate_contract(component_bytes: &[u8], debug: bool) -> Result<()> {
-    let mut parser = WasmParser::new(0);
+    let parser = WasmParser::new(0);
     let mut found_handle = false;
     let mut found_manifest = false;
 
@@ -167,12 +156,8 @@ fn validate_contract(component_bytes: &[u8], debug: bool) -> Result<()> {
                 // 检查 WIT 定义的关键入口
                 // 这些名字对应 SDK `world plugin` 中的 export 定义
                 match name {
-                    "handle" | "vtx:api/plugin/handle" | "vtx:api/plugin#handle" => {
-                        found_handle = true
-                    }
-                    "get-manifest"
-                    | "vtx:api/plugin/get-manifest"
-                    | "vtx:api/plugin#get-manifest" => found_manifest = true,
+                    "handle" | "vtx:api/plugin/handle" | "vtx:api/plugin#handle" => found_handle = true,
+                    "get-manifest" | "vtx:api/plugin/get-manifest" | "vtx:api/plugin#get-manifest" => found_manifest = true,
                     _ => {}
                 }
             }

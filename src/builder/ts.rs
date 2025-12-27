@@ -81,7 +81,7 @@ impl Builder for TsBuilder {
             // 降级策略: 目录内模糊匹配
             if let Ok(entries) = std::fs::read_dir(dir) {
                 for entry in entries.flatten() {
-                    if entry.path().extension().map_or(false, |e| e == "wasm") {
+                    if entry.path().extension().is_some_and(|e| e == "wasm") {
                         return Ok(entry.path());
                     }
                 }

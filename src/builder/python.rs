@@ -98,7 +98,7 @@ impl Builder for PythonBuilder {
             if let Ok(entries) = std::fs::read_dir(dir) {
                 for entry in entries.flatten() {
                     let path = entry.path();
-                    if path.extension().map_or(false, |e| e == "wasm") {
+                    if path.extension().is_some_and(|e| e == "wasm") {
                         return Ok(path);
                     }
                 }
