@@ -77,3 +77,22 @@ fn is_compatible(user: &str, system: &str) -> bool {
     let clean_user = user.trim_start_matches(|c| c == '^' || c == '~' || c == '=');
     clean_user == system
 }
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_version_compatibility() {
+        // 测试精确匹配
+        assert!(is_compatible("0.1.2", "0.1.2"));
+        // 测试带前缀的兼容性
+        assert!(is_compatible("^0.1.2", "0.1.2"));
+        assert!(is_compatible("~0.1.2", "0.1.2"));
+        assert!(is_compatible("=0.1.2", "0.1.2"));
+
+        // 测试不匹配的情况
+        assert!(!is_compatible("0.2.0", "0.1.2"));
+    }
+}
