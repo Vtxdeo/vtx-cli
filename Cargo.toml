@@ -13,4 +13,4 @@ wasi-preview1-component-adapter-provider = "40.0.0"
 serde = { version = "1.0", features = ["derive"] }
 toml = "0.8"
 vtx-format = "0.1.2"
-vtx-sdk = { path = "../vtx-sdk", version = "0.1.2", default-features = false, features = ["meta"] }
+vtx-sdk = { version = "0.1.2", default-features = false, features = ["meta"] }
