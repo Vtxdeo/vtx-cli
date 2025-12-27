@@ -64,7 +64,11 @@ pub fn process_wasm(input_wasm_path: &Path, debug: bool, force: bool) -> Result<
     // 检查生成的组件是否符合 VTX Kernel 的接口要求
     if let Err(e) = validate_contract(&component_bytes, debug) {
         if force {
-            println!("{} Contract validation failed but --force is enabled: {}", "[WARN]".yellow(), e);
+            println!(
+                "{} Contract validation failed but --force is enabled: {}",
+                "[WARN]".yellow(),
+                e
+            );
         } else {
             return Err(e);
         }
@@ -124,7 +128,12 @@ fn validate_user_imports(module_bytes: &[u8], debug: bool) {
                         "->".yellow()
                     );
                 } else if debug {
-                    println!("{} Trusted import: {}::{}", "[DEBUG]".dimmed(), module, field);
+                    println!(
+                        "{} Trusted import: {}::{}",
+                        "[DEBUG]".dimmed(),
+                        module,
+                        field
+                    );
                 }
             }
         }
@@ -156,8 +165,12 @@ fn validate_contract(component_bytes: &[u8], debug: bool) -> Result<()> {
                 // 检查 WIT 定义的关键入口
                 // 这些名字对应 SDK `world plugin` 中的 export 定义
                 match name {
-                    "handle" | "vtx:api/plugin/handle" | "vtx:api/plugin#handle" => found_handle = true,
-                    "get-manifest" | "vtx:api/plugin/get-manifest" | "vtx:api/plugin#get-manifest" => found_manifest = true,
+                    "handle" | "vtx:api/plugin/handle" | "vtx:api/plugin#handle" => {
+                        found_handle = true
+                    }
+                    "get-manifest"
+                    | "vtx:api/plugin/get-manifest"
+                    | "vtx:api/plugin#get-manifest" => found_manifest = true,
                     _ => {}
                 }
             }
