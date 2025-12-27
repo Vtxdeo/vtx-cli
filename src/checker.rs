@@ -78,7 +78,6 @@ fn is_compatible(user: &str, system: &str) -> bool {
     clean_user == system
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
