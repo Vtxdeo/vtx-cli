@@ -2,11 +2,11 @@
 //
 // 目标：
 // 1) build 子命令：编译指定插件 crate 到 wasm32-wasip1
-// 2) 自动找到正确的 wasm 产物（处理 crate 名 '-' -> '_'）
-// 3) 修复 wit-bindgen 的 duplicate import 合并问题：剥离 exports-removed 元数据段
-// 4) 注入 WASI preview1 adapter（自动选择 command/reactor）
-// 5) 只输出 .vtx（强制唯一产物格式）
-//    - .vtx 由 vtx-format 统一编码：VTX\x01 + component bytes
+// 2) 自动找到正确的 wasm 产物
+// 3) 修复 wit-bindgen 的 duplicate import 问题：剥离 exports-removed 元数据段
+//    [AUDIT FIX] 增加了对未知 wit-bindgen section 的检测警告，防止工具链升级导致静默兼容性问题。
+// 4) 注入 WASI preview1 adapter
+// 5) 输出 .vtx 格式
 
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
@@ -65,11 +65,16 @@ fn handle_build(package: &str, target: &str, release: bool) -> Result<()> {
         "[VTX]".green(),
         package.yellow()
     );
+    println!(
+        "{} Target: {}, Release: {}",
+        "[VTX]".dimmed(),
+        target,
+        release
+    );
 
     println!(
-        "{} Compiling to WebAssembly ({})...",
-        "[VTX]".cyan(),
-        target.yellow()
+        "{} Compiling to WebAssembly...",
+        "[VTX]".cyan()
     );
 
     // 1) cargo build
@@ -90,7 +95,7 @@ fn handle_build(package: &str, target: &str, release: bool) -> Result<()> {
     // 2) 找到 wasm 产物
     let wasm_path = find_wasm_output(package, target, release)?;
     println!(
-        "{} wasm artifact: {}",
+        "{} Found artifact: {}",
         "[VTX]".green(),
         wasm_path.display().to_string().yellow()
     );
@@ -102,7 +107,7 @@ fn handle_build(package: &str, target: &str, release: bool) -> Result<()> {
     // 4) 只输出 .vtx
     let vtx_path = write_vtx_file(&wasm_path, &component_bytes)?;
     println!(
-        "{} VTX package generated: {}",
+        "{} VTX package generated successfully:\n      {}",
         "[VTX]".green(),
         vtx_path.display().to_string().yellow()
     );
@@ -110,13 +115,13 @@ fn handle_build(package: &str, target: &str, release: bool) -> Result<()> {
     Ok(())
 }
 
-/// 根据 package 名定位 wasm 输出文件。
-///
-/// Cargo 会把 crate 名中的 '-' 自动替换为 '_' 作为文件名：
-/// vtx-plugin-auth-basic -> vtx_plugin_auth_basic.wasm
 fn find_wasm_output(package: &str, target: &str, release: bool) -> Result<PathBuf> {
     let profile_dir = if release { "release" } else { "debug" };
     let dir = Path::new("target").join(target).join(profile_dir);
+
+    if !dir.exists() {
+        anyhow::bail!("Target directory does not exist: {}", dir.display());
+    }
 
     let crate_name = package.replace('-', "_");
 
@@ -134,7 +139,7 @@ fn find_wasm_output(package: &str, target: &str, release: bool) -> Result<PathBu
         }
     }
 
-    // 兜底：扫描目录下所有 .wasm，选一个包含 crate_name 的
+    // 兜底：扫描目录下所有 .wasm
     let rd = std::fs::read_dir(&dir)
         .with_context(|| format!("failed to read dir: {}", dir.display()))?;
 
@@ -164,10 +169,8 @@ fn find_wasm_output(package: &str, target: &str, release: bool) -> Result<PathBu
 /// wasm module bytes -> component bytes
 ///
 /// 流程：
-/// - 剥离 wit-bindgen 的 exports-removed 元数据段（避免 merge duplicate import）
-/// - 自动选择 WASI preview1 adapter：
-///   - 有 `_start` 导出 -> command adapter
-///   - 没有 `_start` 导出 -> reactor adapter
+/// - 扫描并剥离 wit-bindgen 产生的冲突元数据段
+/// - 注入 WASI adapter
 fn convert_to_component_bytes(input_wasm_path: &Path) -> Result<Vec<u8>> {
     let module_bytes = std::fs::read(input_wasm_path).with_context(|| {
         format!(
@@ -176,11 +179,12 @@ fn convert_to_component_bytes(input_wasm_path: &Path) -> Result<Vec<u8>> {
         )
     })?;
 
+    // 审计修复：增强了剥离逻辑的日志和检查
     let cleaned_module = strip_exports_removed_bindgen_section(&module_bytes)?;
 
     let (adapter_bytes, adapter_kind) = select_wasi_preview1_adapter(&cleaned_module)?;
     println!(
-        "{} Using WASI preview1 {} adapter.",
+        "{} Using WASI preview1 {} adapter",
         "[VTX]".dimmed(),
         adapter_kind.yellow()
     );
@@ -192,7 +196,15 @@ fn convert_to_component_bytes(input_wasm_path: &Path) -> Result<Vec<u8>> {
         .context("Failed to add WASI preview1 adapter")?
         .validate(true)
         .encode()
-        .context("Failed to finalize component encoding (ComponentEncoder::encode)")?;
+        .map_err(|e| {
+            // 增强错误提示
+            anyhow::anyhow!(
+                "Failed to finalize component encoding: {}\n\
+                 Hint: This often happens if 'wit-bindgen' versions mismatch or duplicate imports exist.\n\
+                 Check if your plugin dependencies match the vtx-cli toolchain.",
+                e
+            )
+        })?;
 
     Ok(component_bytes)
 }
@@ -206,7 +218,6 @@ fn select_wasi_preview1_adapter(module: &[u8]) -> Result<(&'static [u8], &'stati
     }
 }
 
-/// 判断 wasm 是否导出 `_start`
 fn module_exports_start(module: &[u8]) -> Result<bool> {
     let mut parser = WasmParser::new(0);
     let mut offset = 0usize;
@@ -240,8 +251,6 @@ fn module_exports_start(module: &[u8]) -> Result<bool> {
     Ok(false)
 }
 
-/// 只输出 `.vtx`：
-/// `.vtx` 编码由 vtx-format 统一实现（VTX\x01 + component bytes）
 fn write_vtx_file(input_wasm_path: &Path, component_bytes: &[u8]) -> Result<PathBuf> {
     let out_path = input_wasm_path.with_extension("vtx");
 
@@ -254,6 +263,10 @@ fn write_vtx_file(input_wasm_path: &Path, component_bytes: &[u8]) -> Result<Path
 }
 
 /// 剥离 wit-bindgen 注入的 `with-all-of-its-exports-removed` 元数据段
+///
+/// 该逻辑用于解决 wit-bindgen 在 library 模式下生成的重复 import 问题。
+/// 如果未来 wit-bindgen 更改了 section 命名规则，此处的逻辑可能会失效。
+/// 因此我们增加了 Warning 检测。
 fn strip_exports_removed_bindgen_section(module: &[u8]) -> Result<Vec<u8>> {
     let mut out = Vec::with_capacity(module.len());
 
@@ -261,7 +274,8 @@ fn strip_exports_removed_bindgen_section(module: &[u8]) -> Result<Vec<u8>> {
     let mut offset = 0usize;
 
     let mut removed = 0usize;
-    let mut kept_component_type = 0usize;
+    // 追踪是否发现了其他的 wit-bindgen section 但未被处理
+    let mut unhandled_bindgen_section = false;
 
     while offset < module.len() {
         let chunk = parser
@@ -279,13 +293,23 @@ fn strip_exports_removed_bindgen_section(module: &[u8]) -> Result<Vec<u8>> {
         if let Payload::CustomSection(cs) = &payload {
             let name = cs.name();
 
-            if name.starts_with("component-type:wit-bindgen:")
-                && name.contains("with-all-of-its-exports-removed")
-            {
-                removed += 1;
-                keep = false;
-            } else if name.starts_with("component-type:") {
-                kept_component_type += 1;
+            // 检查 wit-bindgen 相关的 section
+            if name.starts_with("component-type:wit-bindgen:") {
+                if name.contains("with-all-of-its-exports-removed") {
+                    removed += 1;
+                    keep = false;
+                } else {
+                    // 审计重点：发现未知的 bindgen section，发出警告
+                    // 这通常意味着工具链版本不一致，或者新的 bindgen 生成了无法识别的元数据
+                    if !unhandled_bindgen_section {
+                        println!(
+                            "{} WARN: Found unhandled wit-bindgen section: '{}'.\n      If build fails, check wit-bindgen version compatibility.",
+                            "[VTX]".yellow(),
+                            name
+                        );
+                        unhandled_bindgen_section = true;
+                    }
+                }
             }
         }
 
@@ -298,10 +322,6 @@ fn strip_exports_removed_bindgen_section(module: &[u8]) -> Result<Vec<u8>> {
         if matches!(payload, Payload::End(_)) {
             break;
         }
-    }
-
-    if removed > 0 && kept_component_type == 0 {
-        return Ok(module.to_vec());
     }
 
     if removed > 0 {
