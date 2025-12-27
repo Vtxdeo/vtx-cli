@@ -1,5 +1,4 @@
-use assert_cmd::prelude::*;
-use std::process::Command;
+use assert_cmd::Command;
 use predicates::prelude::*;
 
 #[test]
