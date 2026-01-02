@@ -32,7 +32,10 @@ pub fn check_rust_sdk_version(project_dir: &Path, force: bool) -> Result<()> {
 
     match version {
         Some(v) => {
-            let user_ver = v.as_str().unwrap_or("unknown");
+            let user_ver = v
+                .as_str()
+                .or_else(|| v.get("version").and_then(|value| value.as_str()))
+                .unwrap_or("unknown");
             let cli_target_ver = vtx_sdk::VERSION; // 来自 SDK 常量
 
             // 检查版本兼容性

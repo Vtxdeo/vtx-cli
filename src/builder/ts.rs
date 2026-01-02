@@ -56,7 +56,10 @@ impl Builder for TsBuilder {
         // 2. 检查依赖完整性 (Side Effect: 可能触发网络 IO)
         if Path::new("package.json").exists() && !Path::new("node_modules").exists() {
             println!("[VTX] node_modules not found, running npm install...");
-            Command::new(npm_cmd).arg("install").status()?;
+            let status = Command::new(npm_cmd).arg("install").status()?;
+            if !status.success() {
+                anyhow::bail!("npm install failed");
+            }
         }
 
         // 3. 执行标准 npm run build

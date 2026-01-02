@@ -42,8 +42,8 @@ impl Builder for GoBuilder {
         // 注意: TinyGo 目前使用 'wasi' target 来支持 WASI Preview 1
         let mut args = vec!["build", "-target=wasi", "-o", output_path.to_str().unwrap()];
 
-        if !release {
-            // TinyGo 特有参数，保留调试信息
+        if release {
+            // TinyGo 特有参数，发布模式去除调试信息
             args.push("-no-debug");
         }
 

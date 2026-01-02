@@ -3,7 +3,7 @@ use predicates::prelude::*;
 
 #[test]
 fn test_help_command() {
-    let mut cmd = Command::cargo_bin("vtx").unwrap();
+    let mut cmd = Command::new(assert_cmd::cargo::cargo_bin!("vtx"));
     cmd.arg("--help")
         .assert()
         .success()
@@ -12,7 +12,7 @@ fn test_help_command() {
 
 #[test]
 fn test_build_missing_config() {
-    let mut cmd = Command::cargo_bin("vtx").unwrap();
+    let mut cmd = Command::new(assert_cmd::cargo::cargo_bin!("vtx"));
     cmd.arg("build")
         .assert()
         .failure()
