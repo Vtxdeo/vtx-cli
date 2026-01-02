@@ -19,3 +19,9 @@ QUIET=1 sh install.sh
 GITHUB_TOKEN=... sh install.sh
 sh install.sh --help
 ```
+
+## Install (npm)
+
+```sh
+npm install -g @vtx/cli
+```
