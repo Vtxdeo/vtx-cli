@@ -161,6 +161,8 @@ jobs:
           cargo = Path("Cargo.toml")
           cargo.write_text(re.sub(r'(?m)^version = ".*"$', f'version = "{version}"', cargo.read_text()))
           PY
+          cargo check
+
       - name: Install Rust Toolchain
         uses: dtolnay/rust-toolchain@stable
       - name: Publish
@@ -212,7 +214,7 @@ jobs:
         uses: PyO3/maturin-action@v1
         with:
           command: publish
-          args: --release --skip-existing -u __token__ -p ${{ secrets.PYPI_API_TOKEN }}
+          args: --skip-existing -u __token__ -p ${{ secrets.PYPI_API_TOKEN }}
           target: ${{ matrix.target }}
 
   publish-npm:
