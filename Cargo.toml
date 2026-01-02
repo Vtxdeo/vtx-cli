@@ -10,6 +10,10 @@ homepage = "https://github.com/vtxdeo/vtx-cli"
 keywords = ["wasm", "cli", "plugin", "vtx"]
 categories = ["command-line-utilities", "development-tools"]
 
+[[bin]]
+name = "vtx"
+path = "src/main.rs"
+
 [dependencies]
 anyhow = "1.0"
 clap = { version = "4.4", features = ["derive"] }
