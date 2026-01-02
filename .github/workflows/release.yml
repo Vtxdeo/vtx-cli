@@ -30,7 +30,7 @@ jobs:
             archive_name: vtx-darwin-amd64.tar.gz
 
           - target: aarch64-apple-darwin
-            os: macos-14 # 使用 M1 runner
+            os: macos-14 # ?? M1 runner
             use_cross: false
             archive_name: vtx-darwin-arm64.tar.gz
 
@@ -92,7 +92,20 @@ jobs:
             tar -czf ../${{ matrix.archive_name }} *
           fi
 
+          cd ..
+          python - <<'PY'
+          import hashlib
+          from pathlib import Path
+
+          archive = Path("${{ matrix.archive_name }}")
+          checksum = archive.with_suffix(archive.suffix + ".sha256")
+          digest = hashlib.sha256(archive.read_bytes()).hexdigest()
+          checksum.write_text(f"{digest}  {archive.name}\n")
+          PY
+
       - name: Upload Release Asset
         uses: softprops/action-gh-release@v1
         with:
-          files: ${{ matrix.archive_name }}
+          files: |
+            ${{ matrix.archive_name }}
+            ${{ matrix.archive_name }}.sha256
