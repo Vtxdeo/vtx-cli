@@ -14,6 +14,9 @@ const REPO = process.env.VTX_CLI_REPO || process.env.REPO || "vtxdeo/vtx-cli";
 const VERSION_ENV = process.env.VTX_CLI_VERSION || process.env.VERSION || "latest";
 const BIN_NAME = "vtx";
 const BIN_EXT = process.platform === "win32" ? ".exe" : "";
+const SKIP_DOWNLOAD =
+  process.env.VTX_SKIP_DOWNLOAD === "1" ||
+  process.env.VTX_SKIP_DOWNLOAD === "true";
 
 function platformTag() {
   switch (process.platform) {
@@ -44,7 +47,10 @@ function requestJson(url, token) {
     const req = https.get(
       url,
       {
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        headers: {
+          "User-Agent": "vtx-cli-installer",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
       },
       (res) => {
         if (res.statusCode && res.statusCode >= 400) {
@@ -63,6 +69,34 @@ function requestJson(url, token) {
             reject(err);
           }
         });
+      }
+    );
+    req.on("error", reject);
+  });
+}
+
+function requestRedirectTag(url) {
+  return new Promise((resolve, reject) => {
+    const req = https.get(
+      url,
+      {
+        headers: {
+          "User-Agent": "vtx-cli-installer",
+          Accept: "text/html",
+        },
+      },
+      (res) => {
+        const location = res.headers.location;
+        if (!location) {
+          reject(new Error("Missing redirect location"));
+          return;
+        }
+        const match = location.match(/\/tag\/([^/]+)$/);
+        if (!match) {
+          reject(new Error("Failed to parse tag from redirect"));
+          return;
+        }
+        resolve(match[1]);
       }
     );
     req.on("error", reject);
@@ -98,11 +132,16 @@ async function resolveVersion() {
   }
   const url = `https://api.github.com/repos/${REPO}/releases/latest`;
   const token = process.env.GITHUB_TOKEN || "";
-  const json = await requestJson(url, token);
-  if (!json.tag_name) {
-    throw new Error("Failed to resolve latest version");
+  try {
+    const json = await requestJson(url, token);
+    if (!json.tag_name) {
+      throw new Error("Failed to resolve latest version");
+    }
+    return json.tag_name;
+  } catch (err) {
+    const fallbackUrl = `https://github.com/${REPO}/releases/latest`;
+    return await requestRedirectTag(fallbackUrl);
   }
-  return json.tag_name;
 }
 
 async function readChecksum(pathname) {
@@ -121,6 +160,10 @@ async function fileSha256(pathname) {
 }
 
 async function main() {
+  if (SKIP_DOWNLOAD) {
+    console.log("[vtx] Skipping binary download (VTX_SKIP_DOWNLOAD=1).");
+    return;
+  }
   const osTag = platformTag();
   const arch = archTag();
   if (!osTag || !arch) {

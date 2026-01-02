@@ -47,6 +47,6 @@ jobs:
 
       - name: Pack npm wrapper
         run: |
-          npm install --no-fund --no-audit
+          VTX_SKIP_DOWNLOAD=1 npm install --no-fund --no-audit
           npm pack
         working-directory: npm

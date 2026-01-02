@@ -2,6 +2,13 @@
 name = "vtx"
 version = "0.1.5"
 edition = "2021"
+description = "VTX CLI"
+readme = "README.md"
+license = "MIT"
+repository = "https://github.com/vtxdeo/vtx-cli"
+homepage = "https://github.com/vtxdeo/vtx-cli"
+keywords = ["wasm", "cli", "plugin", "vtx"]
+categories = ["command-line-utilities", "development-tools"]
 
 [dependencies]
 anyhow = "1.0"

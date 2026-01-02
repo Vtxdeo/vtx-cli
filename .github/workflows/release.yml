@@ -42,6 +42,35 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+      - name: Sync versions from tag
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import re
+          from pathlib import Path
+
+          tag = os.environ.get("GITHUB_REF_NAME", "")
+          version = tag[1:] if tag.startswith("v") else tag
+          if not version:
+            raise SystemExit("Missing tag version")
+
+          cargo = Path("Cargo.toml")
+          cargo.write_text(re.sub(r'(?m)^version = ".*"$', f'version = "{version}"', cargo.read_text()))
+
+          pkg = Path("npm/package.json")
+          if pkg.exists():
+            data = json.loads(pkg.read_text())
+            data["version"] = version
+            pkg.write_text(json.dumps(data, indent=2) + "\n")
+
+          pyproject = Path("pyproject.toml")
+          if pyproject.exists():
+            text = pyproject.read_text()
+            text = re.sub(r'(?m)^version = ".*"$', f'version = "{version}"', text)
+            pyproject.write_text(text)
+          PY
 
       - name: Cache Cargo
         uses: actions/cache@v3
@@ -109,3 +138,113 @@ jobs:
           files: |
             ${{ matrix.archive_name }}
             ${{ matrix.archive_name }}.sha256
+
+  publish-crate:
+    name: Publish to crates.io
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Sync versions from tag
+        shell: bash
+        run: |
+          python - <<'PY'
+          import os
+          import re
+          from pathlib import Path
+
+          tag = os.environ.get("GITHUB_REF_NAME", "")
+          version = tag[1:] if tag.startswith("v") else tag
+          if not version:
+            raise SystemExit("Missing tag version")
+
+          cargo = Path("Cargo.toml")
+          cargo.write_text(re.sub(r'(?m)^version = ".*"$', f'version = "{version}"', cargo.read_text()))
+          PY
+      - name: Install Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
+      - name: Publish
+        run: cargo publish --locked
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+  publish-wheels:
+    name: Build and publish wheels
+    runs-on: ${{ matrix.os }}
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64
+          - os: macos-latest
+            target: x86_64
+          - os: macos-14
+            target: aarch64-apple-darwin
+          - os: windows-latest
+            target: x86_64
+    steps:
+      - uses: actions/checkout@v4
+      - name: Sync versions from tag
+        shell: bash
+        run: |
+          python - <<'PY'
+          import os
+          import re
+          from pathlib import Path
+
+          tag = os.environ.get("GITHUB_REF_NAME", "")
+          version = tag[1:] if tag.startswith("v") else tag
+          if not version:
+            raise SystemExit("Missing tag version")
+
+          pyproject = Path("pyproject.toml")
+          if pyproject.exists():
+            text = pyproject.read_text()
+            text = re.sub(r'(?m)^version = ".*"$', f'version = "{version}"', text)
+            pyproject.write_text(text)
+          PY
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Build and publish
+        uses: PyO3/maturin-action@v1
+        with:
+          command: publish
+          args: --release --skip-existing -u __token__ -p ${{ secrets.PYPI_API_TOKEN }}
+          target: ${{ matrix.target }}
+
+  publish-npm:
+    name: Publish to npm
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Sync versions from tag
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          tag = os.environ.get("GITHUB_REF_NAME", "")
+          version = tag[1:] if tag.startswith("v") else tag
+          if not version:
+            raise SystemExit("Missing tag version")
+
+          pkg = Path("npm/package.json")
+          data = json.loads(pkg.read_text())
+          data["version"] = version
+          pkg.write_text(json.dumps(data, indent=2) + "\n")
+          PY
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+          registry-url: "https://registry.npmjs.org"
+      - name: Publish
+        working-directory: npm
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
