@@ -28,11 +28,7 @@ impl Builder for LuaBuilder {
 
     fn build(&self, _package: &str, _target: &str, _release: bool) -> Result<()> {
         // 1. 必须提供自定义命令
-        if let Some(cmd) = self
-            .build_config
-            .as_ref()
-            .and_then(|c| c.cmd.as_ref())
-        {
+        if let Some(cmd) = self.build_config.as_ref().and_then(|c| c.cmd.as_ref()) {
             let (shell, arg) = if cfg!(target_os = "windows") {
                 ("cmd", "/C")
             } else {

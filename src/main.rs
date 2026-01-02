@@ -122,11 +122,7 @@ fn execute_build_pipeline(
         release
     };
 
-    if let Some(cmd) = build_config
-        .as_ref()
-        .and_then(|c| c.cmd.as_ref())
-        .cloned()
-    {
+    if let Some(cmd) = build_config.as_ref().and_then(|c| c.cmd.as_ref()).cloned() {
         execute_custom_build(&cmd)?;
     } else {
         println!(
@@ -188,11 +184,7 @@ fn execute_check_pipeline(debug: bool) -> Result<()> {
     let language = project_info.language;
 
     if let Some(version) = sdk_config.and_then(|sdk| sdk.version) {
-        println!(
-            "{} SDK version declared: {}",
-            "[INFO]".cyan(),
-            version
-        );
+        println!("{} SDK version declared: {}", "[INFO]".cyan(), version);
     }
 
     if language.to_lowercase() == "rust" || language.to_lowercase() == "rs" {

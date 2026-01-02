@@ -1,5 +1,5 @@
-use anyhow::Result;
 use crate::config::BuildConfig;
+use anyhow::Result;
 use std::path::PathBuf;
 
 pub mod go;
@@ -48,7 +48,10 @@ pub trait Builder {
     fn find_output(&self, package: &str, target: &str, release: bool) -> Result<PathBuf>;
 }
 
-pub fn create_builder(language: &str, build_config: Option<BuildConfig>) -> Result<Box<dyn Builder>> {
+pub fn create_builder(
+    language: &str,
+    build_config: Option<BuildConfig>,
+) -> Result<Box<dyn Builder>> {
     match language.to_lowercase().as_str() {
         "rust" | "rs" => Ok(Box::new(rust::RustBuilder)),
         "go" | "tinygo" => Ok(Box::new(go::GoBuilder)),

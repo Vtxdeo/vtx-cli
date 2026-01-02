@@ -28,11 +28,7 @@ impl Builder for PhpBuilder {
 
     fn build(&self, _package: &str, _target: &str, _release: bool) -> Result<()> {
         // 1. 自定义命令优先
-        if let Some(cmd) = self
-            .build_config
-            .as_ref()
-            .and_then(|c| c.cmd.as_ref())
-        {
+        if let Some(cmd) = self.build_config.as_ref().and_then(|c| c.cmd.as_ref()) {
             let (shell, arg) = if cfg!(target_os = "windows") {
                 ("cmd", "/C")
             } else {

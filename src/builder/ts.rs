@@ -40,11 +40,7 @@ impl Builder for TsBuilder {
         };
 
         // 1. 优先执行用户配置的自定义命令
-        if let Some(cmd) = self
-            .build_config
-            .as_ref()
-            .and_then(|c| c.cmd.as_ref())
-        {
+        if let Some(cmd) = self.build_config.as_ref().and_then(|c| c.cmd.as_ref()) {
             let (shell, arg) = if cfg!(target_os = "windows") {
                 ("cmd", "/C")
             } else {
