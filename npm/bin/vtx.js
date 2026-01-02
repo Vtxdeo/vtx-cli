@@ -2,14 +2,40 @@
 "use strict";
 
 const fs = require("node:fs");
-const path = require("node:path");
 const { spawn } = require("node:child_process");
 
-const binName = process.platform === "win32" ? "vtx.exe" : "vtx";
-const binPath = path.join(__dirname, binName);
+const platformMap = {
+  "linux-x64": {
+    pkg: "@vtxdeo/cli-linux-x64",
+  },
+  "darwin-arm64": {
+    pkg: "@vtxdeo/cli-darwin-arm64",
+  },
+  "win32-x64": {
+    pkg: "@vtxdeo/cli-win32-x64",
+  },
+};
 
-if (!fs.existsSync(binPath)) {
-  console.error("[vtx] Binary not found. Please reinstall @vtx/cli.");
+const platformKey = `${process.platform}-${process.arch}`;
+const platformEntry = platformMap[platformKey];
+
+if (!platformEntry) {
+  console.error(`[vtx] Unsupported platform: ${platformKey}`);
+  process.exit(1);
+}
+
+let binPath;
+try {
+  binPath = require(platformEntry.pkg);
+} catch (err) {
+  console.error(
+    `[vtx] Missing platform package (${platformEntry.pkg}). Reinstall @vtxdeo/cli.`
+  );
+  process.exit(1);
+}
+
+if (!binPath || !fs.existsSync(binPath)) {
+  console.error(`[vtx] Binary not found at ${binPath}.`);
   process.exit(1);
 }
 

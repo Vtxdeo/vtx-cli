@@ -1,5 +1,5 @@
 {
-  "name": "@vtx/cli",
+  "name": "@vtxdeo/cli",
   "version": "0.1.4",
   "description": "VTX CLI wrapper for npm",
   "license": "MIT",
@@ -17,17 +17,14 @@
   },
   "files": [
     "bin",
-    "scripts",
     "README.md"
   ],
-  "scripts": {
-    "postinstall": "node scripts/postinstall.js"
-  },
   "engines": {
     "node": ">=18"
   },
-  "dependencies": {
-    "adm-zip": "^0.5.10",
-    "tar": "^6.2.1"
+  "optionalDependencies": {
+    "@vtxdeo/cli-linux-x64": "0.1.4",
+    "@vtxdeo/cli-darwin-arm64": "0.1.4",
+    "@vtxdeo/cli-win32-x64": "0.1.4"
   }
 }

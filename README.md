@@ -1,27 +1,40 @@
-# vtx-cli
+# Installation
 
-## Install (Linux/macOS)
+## Recommended (System Global)
+The easiest way to get the standalone binary.
+```bash
+curl -fsSL [https://raw.githubusercontent.com/.../install.sh](https://raw.githubusercontent.com/.../install.sh) | sh
+# OR
+brew install vtxdeo/tap/vtx
 
-```sh
-curl -fsSL https://raw.githubusercontent.com/vtxdeo/vtx-cli/main/install.sh | sh
 ```
 
-Update by running the same command again. To pin a version:
+## Developer Friendly (Using your existing tools)
 
-```sh
-VERSION=v1.2.3 sh install.sh
+Already have a language environment? You can install `vtx` using your preferred package manager.
+
+### Node.js
+
+```bash
+npm install -g @vtxdeo/cli
+# Or run once without installing:
+npx @vtxdeo/cli init my-project
+
 ```
 
-More options:
+### Python
 
-```sh
-QUIET=1 sh install.sh
-GITHUB_TOKEN=... sh install.sh
-sh install.sh --help
+We recommend using [pipx](https://www.google.com/search?q=https://pypa.github.io/pipx/) to install CLI tools in isolation.
+
+```bash
+pipx install vtx-cli
+
 ```
 
-## Install (npm)
+### Rust
 
-```sh
-npm install -g @vtx/cli
+```bash
+# Installs from source (compilation required)
+cargo install vtx-cli
+
 ```

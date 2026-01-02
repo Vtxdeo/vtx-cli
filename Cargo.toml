@@ -1,5 +1,5 @@
 [package]
-name = "vtx"
+name = "vtx-cli"
 version = "0.1.5"
 edition = "2021"
 description = "VTX CLI"
