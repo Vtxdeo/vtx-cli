@@ -1,5 +1,5 @@
 use super::Builder;
-use crate::config::ProjectInfo;
+use crate::config::BuildConfig;
 use anyhow::{Context, Result};
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -8,12 +8,12 @@ use std::process::Command;
 ///
 /// 依赖：Composer (推荐) 或用户自定义脚本。
 pub struct PhpBuilder {
-    pub config: Option<ProjectInfo>,
+    pub build_config: Option<BuildConfig>,
 }
 
 impl PhpBuilder {
-    pub fn new(config: Option<ProjectInfo>) -> Self {
-        Self { config }
+    pub fn new(build_config: Option<BuildConfig>) -> Self {
+        Self { build_config }
     }
 }
 
@@ -28,7 +28,11 @@ impl Builder for PhpBuilder {
 
     fn build(&self, _package: &str, _target: &str, _release: bool) -> Result<()> {
         // 1. 自定义命令优先
-        if let Some(cmd) = self.config.as_ref().and_then(|c| c.build_cmd.as_ref()) {
+        if let Some(cmd) = self
+            .build_config
+            .as_ref()
+            .and_then(|c| c.cmd.as_ref())
+        {
             let (shell, arg) = if cfg!(target_os = "windows") {
                 ("cmd", "/C")
             } else {
@@ -64,7 +68,11 @@ impl Builder for PhpBuilder {
     }
 
     fn find_output(&self, package: &str, _target: &str, _release: bool) -> Result<PathBuf> {
-        if let Some(dir) = self.config.as_ref().and_then(|c| c.output_dir.as_ref()) {
+        if let Some(dir) = self
+            .build_config
+            .as_ref()
+            .and_then(|c| c.output_dir.as_ref())
+        {
             let p = Path::new(dir).join(format!("{}.wasm", package));
             if p.exists() {
                 return Ok(p);

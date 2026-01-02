@@ -35,4 +35,37 @@ pub enum Commands {
         #[arg(long, default_value_t = false)]
         debug: bool,
     },
+
+    /// 仅检查环境与配置，不执行构建
+    Check {
+        /// 调试模式：输出详细检查日志
+        #[arg(long, default_value_t = false)]
+        debug: bool,
+    },
+
+    /// 仅打包 Wasm 产物为 .vtx，不执行构建
+    Package {
+        /// 输入的 Wasm 文件路径
+        #[arg(short, long)]
+        input: String,
+
+        /// 强制模式：忽略非致命的契约检查错误
+        #[arg(long, default_value_t = false)]
+        force: bool,
+
+        /// 调试模式：输出详细的打包与检查日志
+        #[arg(long, default_value_t = false)]
+        debug: bool,
+    },
+
+    /// 生成项目脚手架
+    Init {
+        /// 项目名称（目录名）
+        #[arg(short, long)]
+        name: String,
+
+        /// 语言（rust|ts|python）
+        #[arg(short, long)]
+        language: String,
+    },
 }

@@ -1,5 +1,5 @@
 use super::Builder;
-use crate::config::ProjectInfo;
+use crate::config::BuildConfig;
 use anyhow::{Context, Result};
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -8,12 +8,12 @@ use std::process::Command;
 ///
 /// 依赖：componentize-py (用于将 Python 转换为 Wasm Component)
 pub struct PythonBuilder {
-    pub config: Option<ProjectInfo>,
+    pub build_config: Option<BuildConfig>,
 }
 
 impl PythonBuilder {
-    pub fn new(config: Option<ProjectInfo>) -> Self {
-        Self { config }
+    pub fn new(build_config: Option<BuildConfig>) -> Self {
+        Self { build_config }
     }
 }
 
@@ -25,9 +25,9 @@ impl Builder for PythonBuilder {
             .context("Python not found.")?;
 
         if self
-            .config
+            .build_config
             .as_ref()
-            .and_then(|c| c.build_cmd.as_ref())
+            .and_then(|c| c.cmd.as_ref())
             .is_none()
         {
             Command::new("componentize-py")
@@ -40,7 +40,11 @@ impl Builder for PythonBuilder {
 
     fn build(&self, package: &str, _target: &str, _release: bool) -> Result<()> {
         // 1. 自定义命令优先
-        if let Some(cmd) = self.config.as_ref().and_then(|c| c.build_cmd.as_ref()) {
+        if let Some(cmd) = self
+            .build_config
+            .as_ref()
+            .and_then(|c| c.cmd.as_ref())
+        {
             println!("[VTX] Executing custom build command: {}", cmd);
             let (shell, arg) = if cfg!(target_os = "windows") {
                 ("cmd", "/C")
@@ -60,7 +64,7 @@ impl Builder for PythonBuilder {
         }
 
         // 2. 默认使用 componentize-py
-        println!("[VTX] No 'build_cmd' found, defaulting to 'componentize-py'...");
+        println!("[VTX] No 'build.cmd' found, defaulting to 'componentize-py'...");
 
         let output_dir = Path::new("dist");
         if !output_dir.exists() {
@@ -89,7 +93,11 @@ impl Builder for PythonBuilder {
     }
 
     fn find_output(&self, package: &str, _target: &str, _release: bool) -> Result<PathBuf> {
-        if let Some(dir) = self.config.as_ref().and_then(|c| c.output_dir.as_ref()) {
+        if let Some(dir) = self
+            .build_config
+            .as_ref()
+            .and_then(|c| c.output_dir.as_ref())
+        {
             let p = Path::new(dir).join(format!("{}.wasm", package));
             if p.exists() {
                 return Ok(p);
@@ -118,6 +126,6 @@ impl Builder for PythonBuilder {
             }
         }
 
-        anyhow::bail!("Could not find .wasm output. Please specify 'output_dir' in vtx.toml")
+        anyhow::bail!("Could not find .wasm output. Please specify 'build.output_dir' in vtx.toml")
     }
 }

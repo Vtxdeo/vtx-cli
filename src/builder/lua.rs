@@ -1,19 +1,19 @@
 use super::Builder;
-use crate::config::ProjectInfo;
+use crate::config::BuildConfig;
 use anyhow::{Context, Result};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
 /// Lua 构建器
 ///
-/// 说明：Lua 生态无统一 Wasm 构建标准，强烈依赖用户配置的 build_cmd。
+/// 说明：Lua 生态无统一 Wasm 构建标准，强烈依赖用户配置的 build.cmd。
 pub struct LuaBuilder {
-    pub config: Option<ProjectInfo>,
+    pub build_config: Option<BuildConfig>,
 }
 
 impl LuaBuilder {
-    pub fn new(config: Option<ProjectInfo>) -> Self {
-        Self { config }
+    pub fn new(build_config: Option<BuildConfig>) -> Self {
+        Self { build_config }
     }
 }
 
@@ -28,7 +28,11 @@ impl Builder for LuaBuilder {
 
     fn build(&self, _package: &str, _target: &str, _release: bool) -> Result<()> {
         // 1. 必须提供自定义命令
-        if let Some(cmd) = self.config.as_ref().and_then(|c| c.build_cmd.as_ref()) {
+        if let Some(cmd) = self
+            .build_config
+            .as_ref()
+            .and_then(|c| c.cmd.as_ref())
+        {
             let (shell, arg) = if cfg!(target_os = "windows") {
                 ("cmd", "/C")
             } else {
@@ -53,11 +57,15 @@ impl Builder for LuaBuilder {
             return Ok(());
         }
 
-        anyhow::bail!("No build method found for Lua. Please specify 'build_cmd' in vtx.toml")
+        anyhow::bail!("No build method found for Lua. Please specify 'build.cmd' in vtx.toml")
     }
 
     fn find_output(&self, package: &str, _target: &str, _release: bool) -> Result<PathBuf> {
-        if let Some(dir) = self.config.as_ref().and_then(|c| c.output_dir.as_ref()) {
+        if let Some(dir) = self
+            .build_config
+            .as_ref()
+            .and_then(|c| c.output_dir.as_ref())
+        {
             let p = Path::new(dir).join(format!("{}.wasm", package));
             if p.exists() {
                 return Ok(p);
@@ -69,6 +77,6 @@ impl Builder for LuaBuilder {
             return Ok(p);
         }
 
-        anyhow::bail!("Lua Wasm artifact not found. Please specify 'output_dir' in vtx.toml")
+        anyhow::bail!("Lua Wasm artifact not found. Please specify 'build.output_dir' in vtx.toml")
     }
 }

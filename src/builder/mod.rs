@@ -1,4 +1,5 @@
 use anyhow::Result;
+use crate::config::BuildConfig;
 use std::path::PathBuf;
 
 pub mod go;
@@ -45,4 +46,16 @@ pub trait Builder {
     /// - 成功：返回绝对路径或相对于执行目录的路径。
     /// - 失败：若找不到文件或存在歧义，返回 Error。
     fn find_output(&self, package: &str, target: &str, release: bool) -> Result<PathBuf>;
+}
+
+pub fn create_builder(language: &str, build_config: Option<BuildConfig>) -> Result<Box<dyn Builder>> {
+    match language.to_lowercase().as_str() {
+        "rust" | "rs" => Ok(Box::new(rust::RustBuilder)),
+        "go" | "tinygo" => Ok(Box::new(go::GoBuilder)),
+        "ts" | "typescript" | "js" | "node" => Ok(Box::new(ts::TsBuilder::new(build_config))),
+        "py" | "python" => Ok(Box::new(python::PythonBuilder::new(build_config))),
+        "php" => Ok(Box::new(php::PhpBuilder::new(build_config))),
+        "lua" => Ok(Box::new(lua::LuaBuilder::new(build_config))),
+        unsupported => anyhow::bail!("Unsupported language identifier: {}", unsupported),
+    }
 }

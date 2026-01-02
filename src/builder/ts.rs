@@ -1,5 +1,5 @@
 use super::Builder;
-use crate::config::ProjectInfo;
+use crate::config::BuildConfig;
 use anyhow::{Context, Result};
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -9,12 +9,12 @@ use std::process::Command;
 /// 职责：代理执行 NPM Scripts。
 /// 依赖：系统需安装 Node.js 和 npm。
 pub struct TsBuilder {
-    pub config: Option<ProjectInfo>,
+    pub build_config: Option<BuildConfig>,
 }
 
 impl TsBuilder {
-    pub fn new(config: Option<ProjectInfo>) -> Self {
-        Self { config }
+    pub fn new(build_config: Option<BuildConfig>) -> Self {
+        Self { build_config }
     }
 }
 
@@ -40,7 +40,11 @@ impl Builder for TsBuilder {
         };
 
         // 1. 优先执行用户配置的自定义命令
-        if let Some(cmd) = self.config.as_ref().and_then(|c| c.build_cmd.as_ref()) {
+        if let Some(cmd) = self
+            .build_config
+            .as_ref()
+            .and_then(|c| c.cmd.as_ref())
+        {
             let (shell, arg) = if cfg!(target_os = "windows") {
                 ("cmd", "/C")
             } else {
@@ -75,7 +79,11 @@ impl Builder for TsBuilder {
 
     fn find_output(&self, package: &str, _target: &str, _release: bool) -> Result<PathBuf> {
         // 策略1: 优先查找配置指定的 output_dir
-        if let Some(dir) = self.config.as_ref().and_then(|c| c.output_dir.as_ref()) {
+        if let Some(dir) = self
+            .build_config
+            .as_ref()
+            .and_then(|c| c.output_dir.as_ref())
+        {
             let p = Path::new(dir).join(format!("{}.wasm", package));
             if p.exists() {
                 return Ok(p);
@@ -113,7 +121,7 @@ impl Builder for TsBuilder {
         }
 
         anyhow::bail!(
-            "Wasm output not found. Please set 'output_dir' in vtx.toml or check npm build script."
+            "Wasm output not found. Please set 'build.output_dir' in vtx.toml or check npm build script."
         )
     }
 }
