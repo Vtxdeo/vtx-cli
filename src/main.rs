@@ -254,7 +254,7 @@ fn execute_init_pipeline(name: &str, language: &str) -> Result<()> {
         "rust" | "rs" => init_rust(project_dir, name),
         "ts" | "typescript" | "js" | "node" => init_ts(project_dir, name),
         "py" | "python" => init_python(project_dir, name),
-        unsupported => anyhow::bail!("Unsupported language identifier: {}", unsupported),
+        unsupported => anyhow::bail!("Unsupported language identifier: {unsupported}"),
     }?;
 
     println!(
@@ -272,18 +272,13 @@ fn init_rust(project_dir: &Path, name: &str) -> Result<()> {
 
     let crate_name = name.replace('-', "_");
     let cargo_toml = format!(
-        "[package]\nname = \"{name}\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[lib]\ncrate-type = [\"cdylib\"]\n\n[dependencies]\nvtx-sdk = \"0.1.8\"\nserde = {{ version = \"1.0\", features = [\"derive\"] }}\nserde_json = \"1.0\"\nanyhow = \"1.0\"\n",
-        name = name
+        "[package]\nname = \"{name}\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[lib]\ncrate-type = [\"cdylib\"]\n\n[dependencies]\nvtx-sdk = \"0.1.8\"\nserde = {{ version = \"1.0\", features = [\"derive\"] }}\nserde_json = \"1.0\"\nanyhow = \"1.0\"\n"
     );
 
-    let lib_rs = format!(
-        "use vtx_sdk::{{export_plugin, VtxPlugin}};\n\n#[derive(Default)]\nstruct Plugin;\n\nimpl VtxPlugin for Plugin {{}}\n\nexport_plugin!(Plugin);\n"
-    );
+    let lib_rs = "use vtx_sdk::{export_plugin, VtxPlugin};\n\n#[derive(Default)]\nstruct Plugin;\n\nimpl VtxPlugin for Plugin {}\n\nexport_plugin!(Plugin);\n".to_string();
 
     let vtx_toml = format!(
-        "[project]\nname = \"{name}\"\nlanguage = \"rust\"\n\n[build]\ncmd = \"cargo build --target wasm32-wasip1 --release\"\noutput_dir = \"target/wasm32-wasip1/release\"\nartifact = \"{crate_name}.wasm\"\n\n[sdk]\nversion = \"0.1.8\"\n",
-        name = name,
-        crate_name = crate_name
+        "[project]\nname = \"{name}\"\nlanguage = \"rust\"\n\n[build]\ncmd = \"cargo build --target wasm32-wasip1 --release\"\noutput_dir = \"target/wasm32-wasip1/release\"\nartifact = \"{crate_name}.wasm\"\n\n[sdk]\nversion = \"0.1.8\"\n"
     );
 
     std::fs::write(project_dir.join("Cargo.toml"), cargo_toml)?;
@@ -300,15 +295,13 @@ fn init_ts(project_dir: &Path, name: &str) -> Result<()> {
     std::fs::create_dir_all(&dist_dir)?;
 
     let package_json = format!(
-        "{{\n  \"name\": \"{name}\",\n  \"version\": \"0.1.0\",\n  \"scripts\": {{\n    \"build\": \"echo TODO: build wasm\"\n  }}\n}}\n",
-        name = name
+        "{{\n  \"name\": \"{name}\",\n  \"version\": \"0.1.0\",\n  \"scripts\": {{\n    \"build\": \"echo TODO: build wasm\"\n  }}\n}}\n"
     );
 
     let index_ts = "export {};\n".to_string();
 
     let vtx_toml = format!(
-        "[project]\nname = \"{name}\"\nlanguage = \"ts\"\n\n[build]\ncmd = \"npm run build\"\noutput_dir = \"dist\"\nartifact = \"{name}.wasm\"\n\n[sdk]\nversion = \"0.2.0\"\n",
-        name = name
+        "[project]\nname = \"{name}\"\nlanguage = \"ts\"\n\n[build]\ncmd = \"npm run build\"\noutput_dir = \"dist\"\nartifact = \"{name}.wasm\"\n\n[sdk]\nversion = \"0.2.0\"\n"
     );
 
     std::fs::write(project_dir.join("package.json"), package_json)?;
@@ -326,17 +319,14 @@ fn init_python(project_dir: &Path, name: &str) -> Result<()> {
     std::fs::create_dir_all(&dist_dir)?;
 
     let pyproject = format!(
-        "[build-system]\nrequires = [\"setuptools\"]\nbuild-backend = \"setuptools.build_meta\"\n\n[project]\nname = \"{name}\"\nversion = \"0.1.0\"\n",
-        name = name
+        "[build-system]\nrequires = [\"setuptools\"]\nbuild-backend = \"setuptools.build_meta\"\n\n[project]\nname = \"{name}\"\nversion = \"0.1.0\"\n"
     );
 
     let init_py = "# plugin entry\n".to_string();
 
     let module_name = name.replace('-', "_");
     let vtx_toml = format!(
-        "[project]\nname = \"{name}\"\nlanguage = \"python\"\n\n[build]\ncmd = \"componentize-py -d . -o dist/{name}.wasm {module_name}\"\noutput_dir = \"dist\"\nartifact = \"{name}.wasm\"\n\n[sdk]\nversion = \"0.2.0\"\n",
-        name = name,
-        module_name = module_name
+        "[project]\nname = \"{name}\"\nlanguage = \"python\"\n\n[build]\ncmd = \"componentize-py -d . -o dist/{name}.wasm {module_name}\"\noutput_dir = \"dist\"\nartifact = \"{name}.wasm\"\n\n[sdk]\nversion = \"0.2.0\"\n"
     );
 
     std::fs::write(project_dir.join("pyproject.toml"), pyproject)?;
@@ -356,7 +346,7 @@ fn execute_custom_build(cmd: &str) -> Result<()> {
     let status = Command::new(shell)
         .args([arg, cmd])
         .status()
-        .with_context(|| format!("Failed to execute build command: {}", cmd))?;
+        .with_context(|| format!("Failed to execute build command: {cmd}"))?;
 
     if !status.success() {
         anyhow::bail!("Custom build command failed");

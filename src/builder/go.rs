@@ -35,7 +35,7 @@ impl Builder for GoBuilder {
             .context("Failed to create target directory for Go build")?;
 
         // 2. 确定输出文件名
-        let output_path = output_dir.join(format!("{}.wasm", package));
+        let output_path = output_dir.join(format!("{package}.wasm"));
 
         // 3. 构造 tinygo 命令
         // 示例: tinygo build -target=wasi -o target/wasm32-wasip1/release/pkg.wasm .
@@ -73,7 +73,7 @@ impl Builder for GoBuilder {
         let path = Path::new("target")
             .join(target)
             .join(profile)
-            .join(format!("{}.wasm", package));
+            .join(format!("{package}.wasm"));
 
         if path.exists() {
             Ok(path)

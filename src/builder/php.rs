@@ -69,17 +69,17 @@ impl Builder for PhpBuilder {
             .as_ref()
             .and_then(|c| c.output_dir.as_ref())
         {
-            let p = Path::new(dir).join(format!("{}.wasm", package));
+            let p = Path::new(dir).join(format!("{package}.wasm"));
             if p.exists() {
                 return Ok(p);
             }
         }
 
         let candidates = vec![
-            Path::new("build").join(format!("{}.wasm", package)),
-            Path::new("dist").join(format!("{}.wasm", package)),
-            Path::new("target").join(format!("{}.wasm", package)),
-            Path::new(".").join(format!("{}.wasm", package)),
+            Path::new("build").join(format!("{package}.wasm")),
+            Path::new("dist").join(format!("{package}.wasm")),
+            Path::new("target").join(format!("{package}.wasm")),
+            Path::new(".").join(format!("{package}.wasm")),
         ];
 
         for p in candidates {

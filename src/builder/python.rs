@@ -41,7 +41,7 @@ impl Builder for PythonBuilder {
     fn build(&self, package: &str, _target: &str, _release: bool) -> Result<()> {
         // 1. 自定义命令优先
         if let Some(cmd) = self.build_config.as_ref().and_then(|c| c.cmd.as_ref()) {
-            println!("[VTX] Executing custom build command: {}", cmd);
+            println!("[VTX] Executing custom build command: {cmd}");
             let (shell, arg) = if cfg!(target_os = "windows") {
                 ("cmd", "/C")
             } else {
@@ -51,7 +51,7 @@ impl Builder for PythonBuilder {
             let status = Command::new(shell)
                 .args([arg, cmd])
                 .status()
-                .with_context(|| format!("Failed to execute command: {}", cmd))?;
+                .with_context(|| format!("Failed to execute command: {cmd}"))?;
 
             if !status.success() {
                 anyhow::bail!("Custom build command failed");
@@ -67,7 +67,7 @@ impl Builder for PythonBuilder {
             std::fs::create_dir_all(output_dir)?;
         }
 
-        let output_file = output_dir.join(format!("{}.wasm", package));
+        let output_file = output_dir.join(format!("{package}.wasm"));
 
         // 假设 componentize-py 已安装并位于 PATH 中
         let status = Command::new("componentize-py")
@@ -94,7 +94,7 @@ impl Builder for PythonBuilder {
             .as_ref()
             .and_then(|c| c.output_dir.as_ref())
         {
-            let p = Path::new(dir).join(format!("{}.wasm", package));
+            let p = Path::new(dir).join(format!("{package}.wasm"));
             if p.exists() {
                 return Ok(p);
             }
@@ -111,7 +111,7 @@ impl Builder for PythonBuilder {
 
         let search_dirs = vec!["dist", "build", "target", "."];
         for dir in search_dirs {
-            let p = Path::new(dir).join(format!("{}.wasm", package));
+            let p = Path::new(dir).join(format!("{package}.wasm"));
             if p.exists() {
                 return Ok(p);
             }

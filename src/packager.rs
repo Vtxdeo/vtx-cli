@@ -55,8 +55,7 @@ pub fn process_wasm(input_wasm_path: &Path, debug: bool, force: bool) -> Result<
         .encode()
         .map_err(|e| {
             anyhow::anyhow!(
-                "Component encoding error: {}\nEnsure wit-bindgen version matches adapter requirements.",
-                e
+                "Component encoding error: {e}\nEnsure wit-bindgen version matches adapter requirements."
             )
         })?;
 
@@ -108,8 +107,8 @@ fn validate_user_imports(module_bytes: &[u8], debug: bool) {
         "__wbindgen_",            // Rust wasm-bindgen 内部使用的 intrinsics
     ];
 
-    for payload in parser.parse_all(module_bytes) {
-        if let Ok(Payload::ImportSection(reader)) = payload {
+    for payload in parser.parse_all(module_bytes).flatten() {
+        if let Payload::ImportSection(reader) = payload {
             for import in reader.into_iter().flatten() {
                 let module = import.module;
                 let field = import.name;
@@ -151,8 +150,8 @@ fn validate_contract(component_bytes: &[u8], debug: bool) -> Result<()> {
     let mut found_manifest = false;
 
     // 解析组件导出表
-    for payload in parser.parse_all(component_bytes) {
-        if let Ok(Payload::ComponentExportSection(reader)) = payload {
+    for payload in parser.parse_all(component_bytes).flatten() {
+        if let Payload::ComponentExportSection(reader) = payload {
             for export in reader {
                 let export = export?;
                 // 直接访问元组结构体的第一个字段获取名称

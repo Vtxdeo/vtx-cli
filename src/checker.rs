@@ -41,16 +41,14 @@ pub fn check_rust_sdk_version(project_dir: &Path, force: bool) -> Result<()> {
             // 检查版本兼容性
             if !is_compatible(user_ver, cli_target_ver) {
                 let msg = format!(
-                    "SDK Version Mismatch: Plugin uses vtx-sdk {}, but this CLI is optimized for v{}.",
-                    user_ver, cli_target_ver
+                    "SDK Version Mismatch: Plugin uses vtx-sdk {user_ver}, but this CLI is optimized for v{cli_target_ver}."
                 );
 
                 if force {
                     println!("{} {} (Force build enabled)", "[WARN]".yellow(), msg);
                 } else {
                     anyhow::bail!(
-                        "{}\nHint: Update vtx-sdk in Cargo.toml or use --force to bypass.",
-                        msg
+                        "{msg}\nHint: Update vtx-sdk in Cargo.toml or use --force to bypass."
                     );
                 }
             } else {

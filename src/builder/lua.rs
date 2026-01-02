@@ -62,13 +62,13 @@ impl Builder for LuaBuilder {
             .as_ref()
             .and_then(|c| c.output_dir.as_ref())
         {
-            let p = Path::new(dir).join(format!("{}.wasm", package));
+            let p = Path::new(dir).join(format!("{package}.wasm"));
             if p.exists() {
                 return Ok(p);
             }
         }
 
-        let p = Path::new(".").join(format!("{}.wasm", package));
+        let p = Path::new(".").join(format!("{package}.wasm"));
         if p.exists() {
             return Ok(p);
         }

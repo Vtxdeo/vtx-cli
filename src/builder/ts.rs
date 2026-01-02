@@ -63,7 +63,7 @@ impl Builder for TsBuilder {
         }
 
         // 3. 执行标准 npm run build
-        println!("[VTX] Executing: {} run build", npm_cmd);
+        println!("[VTX] Executing: {npm_cmd} run build");
         let status = Command::new(npm_cmd).arg("run").arg("build").status()?;
 
         if !status.success() {
@@ -80,7 +80,7 @@ impl Builder for TsBuilder {
             .as_ref()
             .and_then(|c| c.output_dir.as_ref())
         {
-            let p = Path::new(dir).join(format!("{}.wasm", package));
+            let p = Path::new(dir).join(format!("{package}.wasm"));
             if p.exists() {
                 return Ok(p);
             }
@@ -98,7 +98,7 @@ impl Builder for TsBuilder {
         // 策略2: 标准目录启发式搜索
         let search_dirs = vec!["build", "dist", "target", "."];
         let candidates = vec![
-            format!("{}.wasm", package),
+            format!("{package}.wasm"),
             "release.wasm".to_string(),
             "index.wasm".to_string(),
         ];

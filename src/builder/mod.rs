@@ -59,6 +59,6 @@ pub fn create_builder(
         "py" | "python" => Ok(Box::new(python::PythonBuilder::new(build_config))),
         "php" => Ok(Box::new(php::PhpBuilder::new(build_config))),
         "lua" => Ok(Box::new(lua::LuaBuilder::new(build_config))),
-        unsupported => anyhow::bail!("Unsupported language identifier: {}", unsupported),
+        unsupported => anyhow::bail!("Unsupported language identifier: {unsupported}"),
     }
 }
