@@ -7,7 +7,7 @@ fn test_help_command() {
     cmd.arg("--help")
         .assert()
         .success()
-        .stdout(predicate::str::contains("构建并打包插件"));
+        .stdout(predicate::str::contains("Build and package the plugin"));
 }
 
 #[test]
