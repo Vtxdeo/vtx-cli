@@ -14,11 +14,24 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::Instant;
 
-/// CLI 主入口
+/// VTX CLI Banner
+const BANNER: &str = r#"
+__      __  _______  __   __
+\ \    / / |__   __| \ \ / /
+ \ \  / /     | |     \ V /
+  \ \/ /      | |      > <
+   \  /       | |     / . \
+    \/        |_|    /_/ \_\
+"#;
+
+/// CLI Entry Point
 fn main() -> Result<()> {
+    // Print the ASCII art banner first
+    println!("{}", BANNER.green().bold());
+
     let cli = Cli::parse();
 
-    // 捕获顶层错误，格式化输出，避免展示 Rust 栈信息
+    // Catch top-level errors to format them nicely and avoid showing Rust stack traces
     if let Err(e) = run(cli) {
         eprintln!("{} {}", "[ERROR]".red().bold(), e);
         std::process::exit(1);
@@ -27,7 +40,7 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-/// 执行业务主流程
+/// Execute the main business logic
 fn run(cli: Cli) -> Result<()> {
     match cli.command {
         Commands::Build {
@@ -47,15 +60,15 @@ fn run(cli: Cli) -> Result<()> {
     }
 }
 
-/// 执行标准构建流水线
+/// Execute standard build pipeline
 ///
-/// 流程结构：
-/// 1. 初始化配置与上下文
-/// 2. SDK 兼容性检查 (针对 Rust)
-/// 3. 环境预检
-/// 4. 编译源代码
-/// 5. 产物路径解析
-/// 6. 编码打包为 VTX 组件并校验
+/// Flow:
+/// 1. Initialize config and context
+/// 2. SDK compatibility check (for Rust)
+/// 3. Environment pre-check
+/// 4. Compile source code
+/// 5. Resolve artifact path
+/// 6. Encode and package VTX component
 fn execute_build_pipeline(
     package_arg: Option<String>,
     target: &str,
@@ -65,17 +78,17 @@ fn execute_build_pipeline(
 ) -> Result<()> {
     let start_time = Instant::now();
 
-    // --- 1. 初始化配置 ---
-    let config = config::load().ok(); // 配置可选，允许纯 CLI 模式
+    // --- 1. Initialize Config ---
+    let config = config::load().ok(); // Config is optional allows pure CLI usage
     let project_info = config.as_ref().map(|c| c.project.clone());
     let build_config = config.as_ref().and_then(|c| c.build.clone());
 
-    // 包名优先级：命令行 > 配置文件 > 报错
+    // Package name priority: CLI arg > Config file > Error
     let package_name = package_arg
         .or_else(|| project_info.as_ref().map(|p| p.name.clone()))
         .context("Unable to resolve package name. Please specify via --package or vtx.toml.")?;
 
-    // 语言识别：默认使用 Rust
+    // Language detection: Default to Rust
     let language = project_info
         .as_ref()
         .map(|p| p.language.as_str())
@@ -88,7 +101,7 @@ fn execute_build_pipeline(
         language
     );
 
-    // --- 2. SDK 兼容性检查 ---
+    // --- 2. SDK Compatibility Check ---
     if language.to_lowercase() == "rust" || language.to_lowercase() == "rs" {
         if debug {
             println!("{} Checking SDK compatibility...", "[DEBUG]".dimmed());
@@ -101,18 +114,18 @@ fn execute_build_pipeline(
         );
     }
 
-    // 实例化对应语言的构建器策略
+    // Instantiate language-specific builder strategy
     let builder = create_builder(language, build_config.clone())?;
 
-    // --- 3. 环境预检 ---
+    // --- 3. Environment Pre-check ---
     if build_config.as_ref().and_then(|c| c.cmd.as_ref()).is_none() {
         builder
             .check_env()
             .context("Environment validation failed")?;
     }
 
-    // --- 4. 编译阶段 ---
-    // 如果处于 debug 模式，强制编译为 debug 版本以保留符号表
+    // --- 4. Compilation Stage ---
+    // If in debug mode, force non-release build to keep symbols
     let actual_release = if debug {
         println!(
             "{} Debug mode enabled: forcing non-release build.",
@@ -137,7 +150,7 @@ fn execute_build_pipeline(
             .context("Source compilation failed")?;
     }
 
-    // --- 5. 产物路径解析 ---
+    // --- 5. Artifact Resolution ---
     let wasm_path = resolve_wasm_path(
         &package_name,
         target,
@@ -152,13 +165,13 @@ fn execute_build_pipeline(
         wasm_path.display()
     );
 
-    // --- 6. 编码与组件打包 ---
+    // --- 6. Encoding and Packaging ---
     println!(
         "{} Encoding and validating VTX component...",
         "[INFO]".cyan()
     );
 
-    // 传入 debug 和 force 参数进行内部逻辑控制
+    // Pass debug and force flags for internal logic control
     let component_bytes = packager::process_wasm(&wasm_path, debug, force)
         .context("Component packaging or validation failed")?;
 

@@ -1,70 +1,70 @@
 use clap::{Parser, Subcommand};
 
-/// 主程序的命令行接口（CLI）结构体
-/// 用于解析命令行参数并提供命令的处理
+/// Main CLI struct
+/// Parses command line arguments and handles command dispatch
 #[derive(Parser)]
 #[command(author, version, about)]
 pub struct Cli {
-    /// 子命令部分，包含不同的命令类型
+    /// Subcommands available for the CLI
     #[command(subcommand)]
     pub command: Commands,
 }
 
-/// 所有支持的子命令
+/// Supported subcommands
 #[derive(Subcommand)]
 pub enum Commands {
-    /// 构建并打包插件（wasm -> component -> .vtx）
+    /// Build and package the plugin (wasm -> component -> .vtx)
     Build {
-        /// 工作区包名。如果未指定，将尝试从 vtx.toml 配置文件中读取。
+        /// Workspace package name. If not specified, it will be read from vtx.toml.
         #[arg(short, long)]
         package: Option<String>,
 
-        /// 构建目标，默认值为 "wasm32-wasip1"
+        /// Build target architecture (default: "wasm32-wasip1")
         #[arg(long, default_value = "wasm32-wasip1")]
         target: String,
 
-        /// 是否启用 release 模式，默认启用
+        /// Enable release mode (optimized build)
         #[arg(long, default_value_t = true)]
         release: bool,
 
-        /// 强制模式：忽略 SDK 版本不匹配或非致命的契约检查错误
+        /// Force mode: Ignore SDK version mismatches or non-fatal contract errors
         #[arg(long, default_value_t = false)]
         force: bool,
 
-        /// 调试模式：保留调试符号，输出详细的构建与检查日志
+        /// Debug mode: Retain debug symbols and output verbose logs
         #[arg(long, default_value_t = false)]
         debug: bool,
     },
 
-    /// 仅检查环境与配置，不执行构建
+    /// Check environment and configuration without building
     Check {
-        /// 调试模式：输出详细检查日志
+        /// Debug mode: Output verbose check logs
         #[arg(long, default_value_t = false)]
         debug: bool,
     },
 
-    /// 仅打包 Wasm 产物为 .vtx，不执行构建
+    /// Package an existing Wasm artifact into .vtx format
     Package {
-        /// 输入的 Wasm 文件路径
+        /// Input Wasm file path
         #[arg(short, long)]
         input: String,
 
-        /// 强制模式：忽略非致命的契约检查错误
+        /// Force mode: Ignore non-fatal contract errors
         #[arg(long, default_value_t = false)]
         force: bool,
 
-        /// 调试模式：输出详细的打包与检查日志
+        /// Debug mode: Output verbose packaging logs
         #[arg(long, default_value_t = false)]
         debug: bool,
     },
 
-    /// 生成项目脚手架
+    /// Initialize a new plugin project scaffold
     Init {
-        /// 项目名称（目录名）
+        /// Project name (creates a new directory)
         #[arg(short, long)]
         name: String,
 
-        /// 语言（rust|ts|python）
+        /// Language (rust|ts|python)
         #[arg(short, long)]
         language: String,
     },
