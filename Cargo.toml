@@ -22,8 +22,9 @@ wit-component = "0.207.0"
 wasmparser = "0.207.0"
 wasi-preview1-component-adapter-provider = "40.0.0"
 serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
 toml = "0.8"
-vtx-format = "0.1.2"
+vtx-format = "0.1.6"
 vtx-sdk = { version = "0.1.2", default-features = false, features = ["meta"] }
 
 [dev-dependencies]

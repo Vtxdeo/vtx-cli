@@ -9,6 +9,7 @@ use builder::{create_builder, Builder};
 use clap::Parser;
 use cli::{Cli, Commands};
 use colored::*;
+use serde_json::json;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::Instant;
@@ -161,7 +162,16 @@ fn execute_build_pipeline(
     let component_bytes = packager::process_wasm(&wasm_path, debug, force)
         .context("Component packaging or validation failed")?;
 
-    let vtx_path = packager::write_vtx_file(&wasm_path, &component_bytes)
+    let author = project_info.as_ref().and_then(|p| p.author.clone());
+    let sdk_version = resolve_sdk_version(language, config.as_ref());
+    let metadata_json = build_vtx_metadata_json(
+        &package_name,
+        language,
+        author.as_deref(),
+        sdk_version.as_deref(),
+    )?;
+
+    let vtx_path = packager::write_vtx_file(&wasm_path, &component_bytes, &metadata_json)
         .context("Failed to write final artifact")?;
 
     let duration = start_time.elapsed();
@@ -230,7 +240,31 @@ fn execute_package_pipeline(input: &str, debug: bool, force: bool) -> Result<()>
     let component_bytes = packager::process_wasm(wasm_path, debug, force)
         .context("Component packaging or validation failed")?;
 
-    let vtx_path = packager::write_vtx_file(wasm_path, &component_bytes)
+    let config = config::load().ok();
+    let package_name = config
+        .as_ref()
+        .map(|c| c.project.name.clone())
+        .or_else(|| {
+            wasm_path
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .map(|s| s.to_string())
+        })
+        .unwrap_or_else(|| "unknown".to_string());
+    let language = config
+        .as_ref()
+        .map(|c| c.project.language.as_str())
+        .unwrap_or("unknown");
+    let author = config.as_ref().and_then(|c| c.project.author.clone());
+    let sdk_version = resolve_sdk_version(language, config.as_ref());
+    let metadata_json = build_vtx_metadata_json(
+        &package_name,
+        language,
+        author.as_deref(),
+        sdk_version.as_deref(),
+    )?;
+
+    let vtx_path = packager::write_vtx_file(wasm_path, &component_bytes, &metadata_json)
         .context("Failed to write final artifact")?;
 
     println!(
@@ -375,4 +409,34 @@ fn resolve_wasm_path(
     builder
         .find_output(package, target, release)
         .context("Unable to locate compiled artifact")
+}
+
+fn resolve_sdk_version(language: &str, config: Option<&config::ProjectConfig>) -> Option<String> {
+    let declared = config
+        .and_then(|c| c.sdk.as_ref())
+        .and_then(|s| s.version.clone());
+
+    if language.eq_ignore_ascii_case("rust") || language.eq_ignore_ascii_case("rs") {
+        checker::read_rust_sdk_version(Path::new(".")).or(declared)
+    } else {
+        declared
+    }
+}
+
+fn build_vtx_metadata_json(
+    package_name: &str,
+    language: &str,
+    author: Option<&str>,
+    sdk_version: Option<&str>,
+) -> Result<Vec<u8>> {
+    let meta = json!({
+        "schema": 1,
+        "author": author,
+        "sdk_version": sdk_version,
+        "package": package_name,
+        "language": language,
+        "tool": { "name": "vtx-cli", "version": env!("CARGO_PKG_VERSION") }
+    });
+
+    Ok(serde_json::to_vec(&meta)?)
 }

@@ -77,9 +77,13 @@ pub fn process_wasm(input_wasm_path: &Path, debug: bool, force: bool) -> Result<
 }
 
 /// 写入 VTX 格式文件
-pub fn write_vtx_file(input_path: &Path, component_bytes: &[u8]) -> Result<PathBuf> {
+pub fn write_vtx_file(
+    input_path: &Path,
+    component_bytes: &[u8],
+    metadata_json: &[u8],
+) -> Result<PathBuf> {
     let out_path = input_path.with_extension("vtx");
-    let buf = vtx_format::encode_v1(component_bytes);
+    let buf = vtx_format::encode_v2(component_bytes, metadata_json);
 
     std::fs::write(&out_path, buf)
         .with_context(|| format!("Failed to write vtx artifact: {}", out_path.display()))?;

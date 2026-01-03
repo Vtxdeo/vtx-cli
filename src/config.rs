@@ -21,6 +21,9 @@ pub struct ProjectInfo {
     /// 项目语言标识 (如 rust, go, ts, python, php, lua)
     /// 该字段决定了 CLI 采用何种构建策略
     pub language: String,
+
+    /// 插件作者（用于写入 .vtx 元数据，便于仓库与安全扫描）
+    pub author: Option<String>,
 }
 
 /// 构建配置

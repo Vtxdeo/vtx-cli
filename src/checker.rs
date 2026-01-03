@@ -70,6 +70,28 @@ pub fn check_rust_sdk_version(project_dir: &Path, force: bool) -> Result<()> {
     Ok(())
 }
 
+/// 读取 Rust 项目中声明的 vtx-sdk 版本（来自 Cargo.toml）。
+pub fn read_rust_sdk_version(project_dir: &Path) -> Option<String> {
+    let cargo_toml_path = project_dir.join("Cargo.toml");
+    if !cargo_toml_path.exists() {
+        return None;
+    }
+
+    let content = std::fs::read_to_string(&cargo_toml_path).ok()?;
+    let table: Table = toml::from_str(&content).ok()?;
+
+    let version = table
+        .get("dependencies")
+        .and_then(|d| d.get("vtx-sdk"))
+        .or_else(|| table.get("dev-dependencies").and_then(|d| d.get("vtx-sdk")))?;
+
+    let user_ver = version
+        .as_str()
+        .or_else(|| version.get("version").and_then(|value| value.as_str()))?;
+
+    Some(user_ver.trim_start_matches(['^', '~', '=']).to_string())
+}
+
 /// 简易版本兼容性检查
 ///
 /// 逻辑：
