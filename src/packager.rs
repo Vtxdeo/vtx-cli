@@ -152,6 +152,7 @@ fn validate_contract(component_bytes: &[u8], debug: bool) -> Result<()> {
     let parser = WasmParser::new(0);
     let mut found_handle = false;
     let mut found_manifest = false;
+    let mut found_capabilities = false;
 
     // 解析组件导出表
     for payload in parser.parse_all(component_bytes).flatten() {
@@ -174,6 +175,9 @@ fn validate_contract(component_bytes: &[u8], debug: bool) -> Result<()> {
                     "get-manifest"
                     | "vtx:api/plugin/get-manifest"
                     | "vtx:api/plugin#get-manifest" => found_manifest = true,
+                    "get-capabilities"
+                    | "vtx:api/plugin/get-capabilities"
+                    | "vtx:api/plugin#get-capabilities" => found_capabilities = true,
                     _ => {}
                 }
             }
@@ -185,6 +189,9 @@ fn validate_contract(component_bytes: &[u8], debug: bool) -> Result<()> {
     }
     if !found_manifest {
         anyhow::bail!("Contract Violation: Missing required export 'get-manifest'.");
+    }
+    if !found_capabilities {
+        anyhow::bail!("Contract Violation: Missing required export 'get-capabilities'.");
     }
 
     if debug {
