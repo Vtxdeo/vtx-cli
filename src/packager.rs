@@ -185,7 +185,7 @@ fn validate_contract(component_bytes: &[u8], debug: bool) -> Result<()> {
     }
 
     if !found_handle {
-        anyhow::bail!("Contract Violation: Missing required export 'handle'.\nEnsure you have implemented the Plugin trait and used 'vtx_sdk::export!(...)' macro.");
+        anyhow::bail!("Contract Violation: Missing required export 'handle'.\nEnsure you have implemented the Plugin trait and used 'vtx_sdk::export_plugin!(...)' macro.");
     }
     if !found_manifest {
         anyhow::bail!("Contract Violation: Missing required export 'get-manifest'.");
