@@ -169,7 +169,6 @@ jobs:
 
   publish-crate:
     name: Publish to crates.io
-    continue-on-error: true
     needs: prepare-version
     uses: ./.github/workflows/release-crate.yml
     with:
@@ -178,7 +177,6 @@ jobs:
 
   publish-wheels:
     name: Build and publish wheels
-    continue-on-error: true
     needs: prepare-version
     uses: ./.github/workflows/release-wheels.yml
     permissions:
@@ -190,7 +188,6 @@ jobs:
 
   publish-npm:
     name: Publish to npm
-    continue-on-error: true
     needs: prepare-version
     uses: ./.github/workflows/release-npm.yml
     with:
