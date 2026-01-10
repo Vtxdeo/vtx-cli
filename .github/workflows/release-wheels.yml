@@ -1,0 +1,53 @@
+name: Release - Wheels
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        required: true
+        type: string
+
+jobs:
+  publish-wheels:
+    name: Build and publish wheels
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+      id-token: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64
+          - os: macos-latest
+            target: x86_64
+          - os: macos-14
+            target: aarch64-apple-darwin
+          - os: windows-latest
+            target: x86_64
+    steps:
+      - uses: actions/checkout@v4
+      - name: Sync version
+        shell: bash
+        run: |
+          python - <<'PY'
+          import re
+          from pathlib import Path
+
+          version = "${{ inputs.version }}"
+          pyproject = Path("pyproject.toml")
+          if pyproject.exists():
+            text = pyproject.read_text()
+            text = re.sub(r'(?m)^version = ".*"$', f'version = "{version}"', text)
+            pyproject.write_text(text)
+          PY
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Build and publish
+        uses: PyO3/maturin-action@v1
+        with:
+          command: publish
+          args: --skip-existing
+          target: ${{ matrix.target }}

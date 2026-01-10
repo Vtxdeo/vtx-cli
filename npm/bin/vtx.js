@@ -2,17 +2,27 @@
 "use strict";
 
 const fs = require("node:fs");
+const path = require("node:path");
 const { spawn } = require("node:child_process");
 
 const platformMap = {
   "linux-x64": {
     pkg: "@vtxdeo/cli-linux-x64",
   },
+  "linux-arm64": {
+    pkg: "@vtxdeo/cli-linux-arm64",
+  },
+  "darwin-x64": {
+    pkg: "@vtxdeo/cli-darwin-x64",
+  },
   "darwin-arm64": {
     pkg: "@vtxdeo/cli-darwin-arm64",
   },
   "win32-x64": {
     pkg: "@vtxdeo/cli-win32-x64",
+  },
+  "win32-arm64": {
+    pkg: "@vtxdeo/cli-win32-arm64",
   },
 };
 
@@ -25,18 +35,41 @@ if (!platformEntry) {
 }
 
 let binPath;
+let usedFallback = false;
 try {
   binPath = require(platformEntry.pkg);
 } catch (err) {
-  console.error(
-    `[vtx] Missing platform package (${platformEntry.pkg}). Reinstall @vtxdeo/cli.`
+  binPath = null;
+}
+
+if (!binPath || !fs.existsSync(binPath)) {
+  const localBin = path.join(
+    __dirname,
+    `vtx${process.platform === "win32" ? ".exe" : ""}`
   );
-  process.exit(1);
+  if (fs.existsSync(localBin)) {
+    binPath = localBin;
+    usedFallback = true;
+  } else if (!binPath) {
+    console.error(
+      `[vtx] Missing platform package (${platformEntry.pkg}) and no local binary found.`
+    );
+    process.exit(1);
+  } else {
+    console.error(`[vtx] Binary not found at ${binPath}.`);
+    process.exit(1);
+  }
 }
 
 if (!binPath || !fs.existsSync(binPath)) {
   console.error(`[vtx] Binary not found at ${binPath}.`);
   process.exit(1);
+}
+
+if (usedFallback) {
+  console.log(`[vtx] Using local binary from postinstall: ${binPath}`);
+} else {
+  console.log(`[vtx] Using platform package: ${platformEntry.pkg}`);
 }
 
 const child = spawn(binPath, process.argv.slice(2), { stdio: "inherit" });

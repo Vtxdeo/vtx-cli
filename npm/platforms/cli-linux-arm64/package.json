@@ -1,0 +1,23 @@
+{
+  "name": "@vtxdeo/cli-linux-arm64",
+  "version": "0.1.4",
+  "description": "VTX CLI binary for linux arm64",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/vtxdeo/vtx-cli.git",
+    "directory": "npm/platforms/cli-linux-arm64"
+  },
+  "os": [
+    "linux"
+  ],
+  "cpu": [
+    "arm64"
+  ],
+  "main": "index.js",
+  "files": [
+    "bin",
+    "index.js",
+    "README.md"
+  ]
+}

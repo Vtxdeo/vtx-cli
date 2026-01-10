@@ -12,6 +12,24 @@ env:
   BIN_NAME: vtx
 
 jobs:
+  prepare-version:
+    name: Prepare version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Extract version from tag
+        id: version
+        shell: bash
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          version="${tag#v}"
+          if [ -z "$version" ]; then
+            echo "Missing tag version" >&2
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
   build-and-upload:
     name: Build - ${{ matrix.target }}
     runs-on: ${{ matrix.os }}
@@ -24,13 +42,18 @@ jobs:
             use_cross: true
             archive_name: vtx-linux-amd64.tar.gz
 
+          - target: aarch64-unknown-linux-musl
+            os: ubuntu-latest
+            use_cross: true
+            archive_name: vtx-linux-arm64.tar.gz
+
           - target: x86_64-apple-darwin
             os: macos-latest
             use_cross: false
             archive_name: vtx-darwin-amd64.tar.gz
 
           - target: aarch64-apple-darwin
-            os: macos-14 # ?? M1 runner
+            os: macos-14
             use_cross: false
             archive_name: vtx-darwin-arm64.tar.gz
 
@@ -38,6 +61,11 @@ jobs:
             os: windows-latest
             use_cross: false
             archive_name: vtx-windows-amd64.zip
+
+          - target: aarch64-pc-windows-msvc
+            os: windows-latest
+            use_cross: false
+            archive_name: vtx-windows-arm64.zip
 
     steps:
       - name: Checkout Code
@@ -141,115 +169,30 @@ jobs:
 
   publish-crate:
     name: Publish to crates.io
-    runs-on: ubuntu-latest
     continue-on-error: true
-    steps:
-      - uses: actions/checkout@v4
-      - name: Sync versions from tag
-        shell: bash
-        run: |
-          python - <<'PY'
-          import os
-          import re
-          from pathlib import Path
-
-          tag = os.environ.get("GITHUB_REF_NAME", "")
-          version = tag[1:] if tag.startswith("v") else tag
-          if not version:
-            raise SystemExit("Missing tag version")
-
-          cargo = Path("Cargo.toml")
-          cargo.write_text(re.sub(r'(?m)^version = ".*"$', f'version = "{version}"', cargo.read_text()))
-          PY
-          cargo check
-
-      - name: Install Rust Toolchain
-        uses: dtolnay/rust-toolchain@stable
-      - name: Publish
-        run: cargo publish --locked --allow-dirty
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+    needs: prepare-version
+    uses: ./.github/workflows/release-crate.yml
+    with:
+      version: ${{ needs.prepare-version.outputs.version }}
+    secrets: inherit
 
   publish-wheels:
     name: Build and publish wheels
-    runs-on: ${{ matrix.os }}
     continue-on-error: true
+    needs: prepare-version
+    uses: ./.github/workflows/release-wheels.yml
     permissions:
       contents: read
       id-token: write
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: ubuntu-latest
-            target: x86_64
-          - os: macos-latest
-            target: x86_64
-          - os: macos-14
-            target: aarch64-apple-darwin
-          - os: windows-latest
-            target: x86_64
-    steps:
-      - uses: actions/checkout@v4
-      - name: Sync versions from tag
-        shell: bash
-        run: |
-          python - <<'PY'
-          import os
-          import re
-          from pathlib import Path
-
-          tag = os.environ.get("GITHUB_REF_NAME", "")
-          version = tag[1:] if tag.startswith("v") else tag
-          if not version:
-            raise SystemExit("Missing tag version")
-
-          pyproject = Path("pyproject.toml")
-          if pyproject.exists():
-            text = pyproject.read_text()
-            text = re.sub(r'(?m)^version = ".*"$', f'version = "{version}"', text)
-            pyproject.write_text(text)
-          PY
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - name: Build and publish
-        uses: PyO3/maturin-action@v1
-        with:
-          command: publish
-          args: --skip-existing
-          target: ${{ matrix.target }}
+    with:
+      version: ${{ needs.prepare-version.outputs.version }}
+    secrets: inherit
 
   publish-npm:
     name: Publish to npm
-    runs-on: ubuntu-latest
     continue-on-error: true
-    steps:
-      - uses: actions/checkout@v4
-      - name: Sync versions from tag
-        shell: bash
-        run: |
-          python - <<'PY'
-          import json
-          import os
-          from pathlib import Path
-
-          tag = os.environ.get("GITHUB_REF_NAME", "")
-          version = tag[1:] if tag.startswith("v") else tag
-          if not version:
-            raise SystemExit("Missing tag version")
-
-          pkg = Path("npm/package.json")
-          data = json.loads(pkg.read_text())
-          data["version"] = version
-          pkg.write_text(json.dumps(data, indent=2) + "\n")
-          PY
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "18"
-          registry-url: "https://registry.npmjs.org"
-      - name: Publish
-        working-directory: npm
-        run: npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+    needs: prepare-version
+    uses: ./.github/workflows/release-npm.yml
+    with:
+      version: ${{ needs.prepare-version.outputs.version }}
+    secrets: inherit

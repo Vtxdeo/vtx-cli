@@ -24,7 +24,10 @@
   },
   "optionalDependencies": {
     "@vtxdeo/cli-linux-x64": "0.1.4",
+    "@vtxdeo/cli-linux-arm64": "0.1.4",
+    "@vtxdeo/cli-darwin-x64": "0.1.4",
     "@vtxdeo/cli-darwin-arm64": "0.1.4",
-    "@vtxdeo/cli-win32-x64": "0.1.4"
+    "@vtxdeo/cli-win32-x64": "0.1.4",
+    "@vtxdeo/cli-win32-arm64": "0.1.4"
   }
 }
