@@ -41,31 +41,37 @@ jobs:
             os: ubuntu-latest
             use_cross: true
             archive_name: vtx-linux-amd64.tar.gz
+            platform: linux-x64
 
           - target: aarch64-unknown-linux-musl
             os: ubuntu-latest
             use_cross: true
             archive_name: vtx-linux-arm64.tar.gz
+            platform: linux-arm64
 
           - target: x86_64-apple-darwin
             os: macos-latest
             use_cross: false
             archive_name: vtx-darwin-amd64.tar.gz
+            platform: darwin-x64
 
           - target: aarch64-apple-darwin
             os: macos-14
             use_cross: false
             archive_name: vtx-darwin-arm64.tar.gz
+            platform: darwin-arm64
 
           - target: x86_64-pc-windows-msvc
             os: windows-latest
             use_cross: false
             archive_name: vtx-windows-amd64.zip
+            platform: win32-x64
 
           - target: aarch64-pc-windows-msvc
             os: windows-latest
             use_cross: false
             archive_name: vtx-windows-arm64.zip
+            platform: win32-arm64
 
     steps:
       - name: Checkout Code
@@ -160,6 +166,13 @@ jobs:
           checksum.write_text(f"{digest}  {archive.name}\n")
           PY
 
+      - name: Upload Binary Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: binary-${{ matrix.platform }}
+          path: |
+            target/${{ matrix.target }}/release/${{ env.BIN_NAME }}${{ runner.os == 'Windows' && '.exe' || '' }}
+
       - name: Upload Release Asset
         uses: softprops/action-gh-release@v1
         with:
@@ -188,7 +201,9 @@ jobs:
 
   publish-npm:
     name: Publish to npm
-    needs: prepare-version
+    needs:
+      - prepare-version
+      - build-and-upload
     uses: ./.github/workflows/release-npm.yml
     with:
       version: ${{ needs.prepare-version.outputs.version }}

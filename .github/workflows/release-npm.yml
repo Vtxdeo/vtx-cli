@@ -44,6 +44,54 @@ jobs:
           node-version: "18"
           registry-url: "https://registry.npmjs.org"
 
+      - name: Download Binary Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          pattern: binary-*
+
+      - name: Assemble Platform Binaries
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          for artifact in artifacts/binary-*; do
+            if [ ! -d "$artifact" ]; then
+              continue
+            fi
+
+            platform="${artifact##*/}"
+            platform="${platform#binary-}"
+            bin_dir="npm/platforms/cli-${platform}/bin"
+            mkdir -p "$bin_dir"
+
+            mapfile -t files < <(find "$artifact" -maxdepth 1 -type f)
+            if [ "${#files[@]}" -eq 0 ]; then
+              echo "No binary found in $artifact" >&2
+              exit 1
+            fi
+            if [ "${#files[@]}" -gt 1 ]; then
+              echo "Multiple binaries found in $artifact" >&2
+              exit 1
+            fi
+
+            src="${files[0]}"
+            dest="$bin_dir/$(basename "$src")"
+            mv "$src" "$dest"
+
+            if [[ "$platform" != win32-* ]]; then
+              chmod +x "$dest"
+            fi
+          done
+
+          for pkg in npm/platforms/cli-*; do
+            bin_dir="$pkg/bin"
+            if [ ! -d "$bin_dir" ] || [ -z "$(ls -A "$bin_dir")" ]; then
+              echo "Missing binary for $pkg" >&2
+              exit 1
+            fi
+          done
+
       - name: Publish Platform Packages
         run: |
           for platform in npm/platforms/*; do
