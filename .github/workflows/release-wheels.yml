@@ -47,6 +47,8 @@ jobs:
           python-version: "3.11"
       - name: Build and publish
         uses: PyO3/maturin-action@v1
+        env:
+          MATURIN_PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
         with:
           command: publish
           args: --skip-existing
