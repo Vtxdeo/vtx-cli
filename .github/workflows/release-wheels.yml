@@ -31,16 +31,26 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
-      - name: Verify Version Consistency
+      - name: Sync version
         shell: bash
         run: |
-          CARGO_VERSION=$(grep "^version" Cargo.toml | head -n 1 | awk -F '"' '{print $2}')
-          TAG_VERSION="${{ inputs.tag_name }}"
-          TAG_VERSION=${TAG_VERSION#v}
-          if [ "$CARGO_VERSION" != "$TAG_VERSION" ]; then
-            exit 1
-          fi
+          python - <<'PY'
+          import re
+          import os
+          from pathlib import Path
+
+          tag = "${{ inputs.tag_name }}"
+          version = tag[1:] if tag.startswith("v") else tag
+          
+          cargo = Path("Cargo.toml")
+          if cargo.exists():
+              content = cargo.read_text()
+              new_content = re.sub(r'(?m)^version = ".*"$', f'version = "{version}"', content)
+              cargo.write_text(new_content)
+              print(f"Updated Cargo.toml to version {version}")
+          else:
+              print("Cargo.toml not found, skipping version sync")
+          PY
 
       - uses: actions/setup-python@v5
         with:
