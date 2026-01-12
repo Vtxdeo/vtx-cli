@@ -1,9 +1,9 @@
-name: Release - Wheels
+name: Release Wheels
 
 on:
   workflow_call:
     inputs:
-      version:
+      tag_name:
         required: true
         type: string
 
@@ -20,32 +20,43 @@ jobs:
         include:
           - os: ubuntu-latest
             target: x86_64
+          - os: ubuntu-latest
+            target: aarch64
+          - os: macos-13
+            target: x86_64
           - os: macos-latest
-            target: x86_64
-          - os: macos-14
-            target: aarch64-apple-darwin
+            target: aarch64
           - os: windows-latest
-            target: x86_64
+            target: x64
+
     steps:
       - uses: actions/checkout@v4
-      - name: Sync version
+
+      - name: Verify Version Consistency
         shell: bash
         run: |
-          python - <<'PY'
-          import re
-          from pathlib import Path
+          CARGO_VERSION=$(grep "^version" Cargo.toml | head -n 1 | awk -F '"' '{print $2}')
+          TAG_VERSION="${{ inputs.tag_name }}"
+          TAG_VERSION=${TAG_VERSION#v}
+          if [ "$CARGO_VERSION" != "$TAG_VERSION" ]; then
+            exit 1
+          fi
 
-          version = "${{ inputs.version }}"
-          pyproject = Path("pyproject.toml")
-          if pyproject.exists():
-            text = pyproject.read_text()
-            text = re.sub(r'(?m)^version = ".*"$', f'version = "{version}"', text)
-            pyproject.write_text(text)
-          PY
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
-      - name: Build and publish
+          python-version: '3.10'
+
+      - name: Build and publish (OIDC)
+        id: publish-oidc
+        uses: PyO3/maturin-action@v1
+        continue-on-error: true
+        with:
+          command: publish
+          args: --skip-existing
+          target: ${{ matrix.target }}
+
+      - name: Build and publish (Token Fallback)
+        if: steps.publish-oidc.outcome == 'failure'
         uses: PyO3/maturin-action@v1
         env:
           MATURIN_PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
