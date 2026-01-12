@@ -183,7 +183,7 @@ jobs:
       contents: read
       id-token: write
     with:
-      version: ${{ needs.prepare-version.outputs.version }}
+      tag_name: ${{ needs.prepare-version.outputs.version }}
     secrets: inherit
 
   publish-npm:
