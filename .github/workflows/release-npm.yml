@@ -11,6 +11,9 @@ jobs:
   publish-npm:
     name: Publish to npm
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@v4
       - name: Sync version
@@ -27,12 +30,13 @@ jobs:
               data = json.loads(pkg.read_text())
               data["version"] = version
               pkg.write_text(json.dumps(data, indent=2) + "\n")
+              print(f"Updated main package to {version}")
 
           for pkg in Path("npm/platforms").glob("*/package.json"):
               data = json.loads(pkg.read_text())
               data["version"] = version
               pkg.write_text(json.dumps(data, indent=2) + "\n")
-              print(f"Updated {pkg} to version {version}")
+              print(f"Updated {pkg.parent.name} to {version}")
           PY
 
       - uses: actions/setup-node@v4
@@ -46,12 +50,13 @@ jobs:
             if [ -d "$platform" ]; then
               echo "Publishing $platform..."
               cd "$platform"
-              npm publish --access public
+              npm publish --access public || echo "Failed to publish $platform"
               cd -
             fi
           done
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
 
       - name: Publish Main Package
         working-directory: npm
