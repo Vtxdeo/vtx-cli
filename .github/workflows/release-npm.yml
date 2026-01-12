@@ -21,16 +21,39 @@ jobs:
           from pathlib import Path
 
           version = "${{ inputs.version }}"
+
           pkg = Path("npm/package.json")
-          data = json.loads(pkg.read_text())
-          data["version"] = version
-          pkg.write_text(json.dumps(data, indent=2) + "\n")
+          if pkg.exists():
+              data = json.loads(pkg.read_text())
+              data["version"] = version
+              pkg.write_text(json.dumps(data, indent=2) + "\n")
+
+          for pkg in Path("npm/platforms").glob("*/package.json"):
+              data = json.loads(pkg.read_text())
+              data["version"] = version
+              pkg.write_text(json.dumps(data, indent=2) + "\n")
+              print(f"Updated {pkg} to version {version}")
           PY
+
       - uses: actions/setup-node@v4
         with:
           node-version: "18"
           registry-url: "https://registry.npmjs.org"
-      - name: Publish
+
+      - name: Publish Platform Packages
+        run: |
+          for platform in npm/platforms/*; do
+            if [ -d "$platform" ]; then
+              echo "Publishing $platform..."
+              cd "$platform"
+              npm publish --access public
+              cd -
+            fi
+          done
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish Main Package
         working-directory: npm
         run: npm publish --access public
         env:
