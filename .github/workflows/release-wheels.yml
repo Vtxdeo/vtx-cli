@@ -19,13 +19,13 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            target: x86_64
+            target: x86_64-unknown-linux-gnu
           - os: ubuntu-latest
-            target: aarch64
+            target: aarch64-unknown-linux-gnu
           - os: macos-latest
-            target: aarch64
+            target: aarch64-apple-darwin
           - os: windows-latest
-            target: x64
+            target: x86_64-pc-windows-msvc
 
     steps:
       - uses: actions/checkout@v4
@@ -54,21 +54,25 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: Build and publish (OIDC)
-        id: publish-oidc
+      - name: Build wheels
         uses: PyO3/maturin-action@v1
-        continue-on-error: true
         with:
-          command: publish
-          args: --skip-existing
+          command: build
+          args: --release --out dist
           target: ${{ matrix.target }}
 
-      - name: Build and publish (Token Fallback)
-        if: steps.publish-oidc.outcome == 'failure'
-        uses: PyO3/maturin-action@v1
-        env:
-          MATURIN_PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
+      - name: Publish (OIDC)
+        id: publish-oidc
+        uses: pypa/gh-action-pypi-publish@release/v1
+        continue-on-error: true
         with:
-          command: publish
-          args: --skip-existing
-          target: ${{ matrix.target }}
+          packages-dir: dist
+          skip-existing: true
+
+      - name: Publish (Token Fallback)
+        if: steps.publish-oidc.outcome == 'failure'
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist
+          skip-existing: true
+          password: ${{ secrets.PYPI_TOKEN }}

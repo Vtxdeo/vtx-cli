@@ -98,6 +98,10 @@ jobs:
           if pkg.exists():
             data = json.loads(pkg.read_text())
             data["version"] = version
+            if "optionalDependencies" in data:
+              data["optionalDependencies"] = {
+                name: version for name in data["optionalDependencies"].keys()
+              }
             pkg.write_text(json.dumps(data, indent=2) + "\n")
 
           pyproject = Path("pyproject.toml")

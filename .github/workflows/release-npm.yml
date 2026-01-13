@@ -29,6 +29,10 @@ jobs:
           if pkg.exists():
               data = json.loads(pkg.read_text())
               data["version"] = version
+              if "optionalDependencies" in data:
+                  data["optionalDependencies"] = {
+                      name: version for name in data["optionalDependencies"].keys()
+                  }
               pkg.write_text(json.dumps(data, indent=2) + "\n")
               print(f"Updated main package to {version}")
 
@@ -43,6 +47,50 @@ jobs:
         with:
           node-version: "18"
           registry-url: "https://registry.npmjs.org"
+
+      - name: Validate npm package metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          version="${{ inputs.version }}"
+
+          optional_deps="$(node -p "Object.keys(require('./npm/package.json').optionalDependencies || {}).join(',')")"
+          if [ -z "$optional_deps" ]; then
+            echo "No optionalDependencies found in npm/package.json" >&2
+            exit 1
+          fi
+
+          mismatch=()
+          for dep in $(echo "$optional_deps" | tr ',' ' '); do
+            dep_version="$(node -p "require('./npm/package.json').optionalDependencies['$dep']")"
+            if [ "$dep_version" != "$version" ]; then
+              mismatch+=("$dep@$dep_version")
+            fi
+          done
+          if [ "${#mismatch[@]}" -ne 0 ]; then
+            echo "Optional dependency versions do not match $version: ${mismatch[*]}" >&2
+            exit 1
+          fi
+
+          missing_packages=()
+          for dep in $(echo "$optional_deps" | tr ',' ' '); do
+            pkg_dir="npm/platforms/cli-${dep##*/cli-}"
+            if [ ! -d "$pkg_dir" ]; then
+              missing_packages+=("$dep")
+              continue
+            fi
+            pkg_version="$(node -p "require('./$pkg_dir/package.json').version")"
+            if [ "$pkg_version" != "$version" ]; then
+              echo "Version mismatch in $pkg_dir ($pkg_version != $version)" >&2
+              exit 1
+            fi
+          done
+
+          if [ "${#missing_packages[@]}" -ne 0 ]; then
+            echo "Missing platform package dirs for: ${missing_packages[*]}" >&2
+            exit 1
+          fi
 
       - name: Download Binary Artifacts
         uses: actions/download-artifact@v4
