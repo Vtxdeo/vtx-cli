@@ -203,7 +203,12 @@ jobs:
               pkg_version="$(node -p "require('./$platform/package.json').version")"
               echo "Publishing $platform ($pkg_name@$pkg_version)..."
               cd "$platform"
-              if npm publish --access public; then
+              if [ "$pkg_name" = "@vtxdeo/cli-linux-x64" ]; then
+                npm_publish_cmd="npm publish --access public --verbose"
+              else
+                npm_publish_cmd="npm publish --access public"
+              fi
+              if $npm_publish_cmd; then
                 echo "Published $pkg_name@$pkg_version"
               else
                 echo "Publish failed for $pkg_name@$pkg_version, checking if already exists..."
@@ -230,10 +235,15 @@ jobs:
             if [ -d "$platform" ]; then
               pkg_name="$(node -p "require('./$platform/package.json').name")"
               pkg_version="$(node -p "require('./$platform/package.json').version")"
-              if ! npm view "$pkg_name@$pkg_version" version >/dev/null 2>&1; then
-                echo "Missing $pkg_name@$pkg_version on npm." >&2
-                exit 1
-              fi
+              attempts=0
+              until npm view "$pkg_name@$pkg_version" version >/dev/null 2>&1; do
+                attempts=$((attempts + 1))
+                if [ "$attempts" -ge 12 ]; then
+                  echo "Missing $pkg_name@$pkg_version on npm after ${attempts} checks." >&2
+                  exit 1
+                fi
+                sleep 5
+              done
               echo "Verified $pkg_name@$pkg_version on npm."
             fi
           done
