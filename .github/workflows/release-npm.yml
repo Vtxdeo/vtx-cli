@@ -50,6 +50,58 @@ jobs:
           path: artifacts
           pattern: binary-*
 
+      - name: Verify Binary Artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          expected=()
+          for pkg in npm/platforms/cli-*; do
+            if [ -d "$pkg" ]; then
+              platform="${pkg##*/cli-}"
+              expected+=("$platform")
+            fi
+          done
+
+          if [ "${#expected[@]}" -eq 0 ]; then
+            echo "No platform packages found under npm/platforms/cli-*" >&2
+            exit 1
+          fi
+
+          missing=()
+          for platform in "${expected[@]}"; do
+            if [ ! -d "artifacts/binary-$platform" ]; then
+              missing+=("$platform")
+            fi
+          done
+
+          if [ "${#missing[@]}" -ne 0 ]; then
+            echo "Missing binary artifacts for: ${missing[*]}" >&2
+            exit 1
+          fi
+
+          extra=()
+          for artifact in artifacts/binary-*; do
+            if [ -d "$artifact" ]; then
+              platform="${artifact##*/binary-}"
+              found=false
+              for expected_platform in "${expected[@]}"; do
+                if [ "$platform" = "$expected_platform" ]; then
+                  found=true
+                  break
+                fi
+              done
+              if [ "$found" = "false" ]; then
+                extra+=("$platform")
+              fi
+            fi
+          done
+
+          if [ "${#extra[@]}" -ne 0 ]; then
+            echo "Unexpected binary artifacts for: ${extra[*]}" >&2
+            exit 1
+          fi
+
       - name: Assemble Platform Binaries
         shell: bash
         run: |
@@ -93,18 +145,50 @@ jobs:
           done
 
       - name: Publish Platform Packages
+        shell: bash
         run: |
+          set -euo pipefail
+
           for platform in npm/platforms/*; do
             if [ -d "$platform" ]; then
-              echo "Publishing $platform..."
+              pkg_name="$(node -p "require('./$platform/package.json').name")"
+              pkg_version="$(node -p "require('./$platform/package.json').version")"
+              echo "Publishing $platform ($pkg_name@$pkg_version)..."
               cd "$platform"
-              npm publish --access public || echo "Failed to publish $platform"
-              cd -
+              if npm publish --access public; then
+                echo "Published $pkg_name@$pkg_version"
+              else
+                echo "Publish failed for $pkg_name@$pkg_version, checking if already exists..."
+                if npm view "$pkg_name@$pkg_version" version >/dev/null 2>&1; then
+                  echo "Already published $pkg_name@$pkg_version, continuing."
+                else
+                  echo "Missing $pkg_name@$pkg_version on npm after publish failure." >&2
+                  exit 1
+                fi
+              fi
+              cd - >/dev/null
             fi
           done
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
+
+      - name: Verify Platform Packages on npm
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          for platform in npm/platforms/*; do
+            if [ -d "$platform" ]; then
+              pkg_name="$(node -p "require('./$platform/package.json').name")"
+              pkg_version="$(node -p "require('./$platform/package.json').version")"
+              if ! npm view "$pkg_name@$pkg_version" version >/dev/null 2>&1; then
+                echo "Missing $pkg_name@$pkg_version on npm." >&2
+                exit 1
+              fi
+              echo "Verified $pkg_name@$pkg_version on npm."
+            fi
+          done
 
       - name: Publish Main Package
         working-directory: npm
