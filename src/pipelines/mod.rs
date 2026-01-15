@@ -1,4 +1,4 @@
-﻿mod build;
+mod build;
 mod check;
 mod common;
 mod init;

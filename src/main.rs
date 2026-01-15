@@ -1,4 +1,4 @@
-﻿mod builder;
+mod builder;
 mod checker;
 mod cli;
 mod config;
@@ -11,8 +11,7 @@ use clap::Parser;
 use cli::{Cli, Commands};
 use colored::*;
 use pipelines::{
-    execute_build_pipeline, execute_check_pipeline, execute_init_pipeline,
-    execute_package_pipeline,
+    execute_build_pipeline, execute_check_pipeline, execute_init_pipeline, execute_package_pipeline,
 };
 
 /// VTX CLI Banner

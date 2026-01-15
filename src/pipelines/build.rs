@@ -1,12 +1,9 @@
-﻿use anyhow::{Context, Result};
+use anyhow::{Context, Result};
 use colored::*;
 use std::path::Path;
 use std::time::Instant;
 
-use crate::{
-    builder::create_builder,
-    checker, config, packager,
-};
+use crate::{builder::create_builder, checker, config, packager};
 
 use super::common::{
     build_vtx_metadata_json, execute_custom_build, resolve_sdk_version, resolve_wasm_path,

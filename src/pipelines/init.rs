@@ -1,4 +1,4 @@
-﻿use anyhow::Result;
+use anyhow::Result;
 use colored::*;
 use std::path::Path;
 
@@ -32,7 +32,10 @@ fn init_rust(project_dir: &Path, name: &str) -> Result<()> {
     let src_dir = project_dir.join("src");
     std::fs::create_dir_all(&src_dir)?;
 
-    std::fs::write(project_dir.join("Cargo.toml"), templates::rust_cargo_toml(name))?;
+    std::fs::write(
+        project_dir.join("Cargo.toml"),
+        templates::rust_cargo_toml(name),
+    )?;
     std::fs::write(src_dir.join("lib.rs"), templates::rust_lib_rs())?;
     std::fs::write(project_dir.join("vtx.toml"), templates::rust_vtx_toml(name))?;
 
@@ -45,7 +48,10 @@ fn init_ts(project_dir: &Path, name: &str) -> Result<()> {
     std::fs::create_dir_all(&src_dir)?;
     std::fs::create_dir_all(&dist_dir)?;
 
-    std::fs::write(project_dir.join("package.json"), templates::ts_package_json(name))?;
+    std::fs::write(
+        project_dir.join("package.json"),
+        templates::ts_package_json(name),
+    )?;
     std::fs::write(src_dir.join("index.ts"), templates::ts_index_ts())?;
     std::fs::write(project_dir.join("vtx.toml"), templates::ts_vtx_toml(name))?;
 
@@ -59,9 +65,15 @@ fn init_python(project_dir: &Path, name: &str) -> Result<()> {
     std::fs::create_dir_all(&module_dir)?;
     std::fs::create_dir_all(&dist_dir)?;
 
-    std::fs::write(project_dir.join("pyproject.toml"), templates::pyproject_toml(name))?;
+    std::fs::write(
+        project_dir.join("pyproject.toml"),
+        templates::pyproject_toml(name),
+    )?;
     std::fs::write(module_dir.join("__init__.py"), templates::python_init_py())?;
-    std::fs::write(project_dir.join("vtx.toml"), templates::python_vtx_toml(name))?;
+    std::fs::write(
+        project_dir.join("vtx.toml"),
+        templates::python_vtx_toml(name),
+    )?;
 
     Ok(())
 }

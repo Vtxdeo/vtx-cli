@@ -1,4 +1,4 @@
-﻿use anyhow::{Context, Result};
+use anyhow::{Context, Result};
 use serde_json::json;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -46,7 +46,10 @@ pub fn resolve_wasm_path(
         .context("Unable to locate compiled artifact")
 }
 
-pub fn resolve_sdk_version(language: &str, config: Option<&config::ProjectConfig>) -> Option<String> {
+pub fn resolve_sdk_version(
+    language: &str,
+    config: Option<&config::ProjectConfig>,
+) -> Option<String> {
     let declared = config
         .and_then(|c| c.sdk.as_ref())
         .and_then(|s| s.version.clone());
