@@ -18,8 +18,11 @@ my-rust-plugin/
 `vtx.toml`:
 
 ```toml
+vtx_version = 1
+
 [project]
 name = "my-rust-plugin"
+version = "0.1.0"
 language = "rust"
 authors = [{ name = "Your Name", email = "you@example.com" }]
 description = "Short plugin summary"
@@ -50,8 +53,11 @@ my-ts-plugin/
 `vtx.toml`:
 
 ```toml
+vtx_version = 1
+
 [project]
 name = "my-ts-plugin"
+version = "0.1.0"
 language = "ts"
 authors = [{ name = "Your Name", email = "you@example.com" }]
 description = "Short plugin summary"
@@ -83,8 +89,11 @@ my-py-plugin/
 `vtx.toml`:
 
 ```toml
+vtx_version = 1
+
 [project]
 name = "my-py-plugin"
+version = "0.1.0"
 language = "python"
 authors = [{ name = "Your Name", email = "you@example.com" }]
 description = "Short plugin summary"

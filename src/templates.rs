@@ -11,7 +11,7 @@ pub fn rust_lib_rs() -> String {
 
 pub fn rust_vtx_toml(name: &str) -> String {
     format!(
-        "[project]\nname = \"{name}\"\nlanguage = \"rust\"\nauthors = [{{ name = \"Your Name\", email = \"you@example.com\" }}]\ndescription = \"Short plugin summary\"\nlicense = \"MIT\"\nhomepage = \"https://example.com\"\nrepository = \"https://example.com/repo\"\nkeywords = [\"vtx\", \"plugin\"]\n"
+        "vtx_version = 1\n\n[project]\nname = \"{name}\"\nversion = \"0.1.0\"\nlanguage = \"rust\"\nauthors = [{{ name = \"Your Name\", email = \"you@example.com\" }}]\ndescription = \"Short plugin summary\"\nlicense = \"MIT\"\nhomepage = \"https://example.com\"\nrepository = \"https://example.com/repo\"\nkeywords = [\"vtx\", \"plugin\"]\n"
     )
 }
 
@@ -27,7 +27,7 @@ pub fn ts_index_ts() -> String {
 
 pub fn ts_vtx_toml(name: &str) -> String {
     format!(
-        "[project]\nname = \"{name}\"\nlanguage = \"ts\"\nauthors = [{{ name = \"Your Name\", email = \"you@example.com\" }}]\ndescription = \"Short plugin summary\"\nlicense = \"MIT\"\nhomepage = \"https://example.com\"\nrepository = \"https://example.com/repo\"\nkeywords = [\"vtx\", \"plugin\"]\n"
+        "vtx_version = 1\n\n[project]\nname = \"{name}\"\nversion = \"0.1.0\"\nlanguage = \"ts\"\nauthors = [{{ name = \"Your Name\", email = \"you@example.com\" }}]\ndescription = \"Short plugin summary\"\nlicense = \"MIT\"\nhomepage = \"https://example.com\"\nrepository = \"https://example.com/repo\"\nkeywords = [\"vtx\", \"plugin\"]\n"
     )
 }
 
@@ -43,6 +43,6 @@ pub fn python_init_py() -> String {
 
 pub fn python_vtx_toml(name: &str) -> String {
     format!(
-        "[project]\nname = \"{name}\"\nlanguage = \"python\"\nauthors = [{{ name = \"Your Name\", email = \"you@example.com\" }}]\ndescription = \"Short plugin summary\"\nlicense = \"MIT\"\nhomepage = \"https://example.com\"\nrepository = \"https://example.com/repo\"\nkeywords = [\"vtx\", \"plugin\"]\n"
+        "vtx_version = 1\n\n[project]\nname = \"{name}\"\nversion = \"0.1.0\"\nlanguage = \"python\"\nauthors = [{{ name = \"Your Name\", email = \"you@example.com\" }}]\ndescription = \"Short plugin summary\"\nlicense = \"MIT\"\nhomepage = \"https://example.com\"\nrepository = \"https://example.com/repo\"\nkeywords = [\"vtx\", \"plugin\"]\n"
     )
 }

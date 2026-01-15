@@ -7,6 +7,7 @@ use std::path::Path;
 /// 对应项目根目录下的 vtx.toml 文件
 #[derive(Deserialize, Debug, Clone)]
 pub struct ProjectConfig {
+    pub vtx_version: Option<u32>,
     pub project: ProjectInfo,
     pub build: Option<BuildConfig>,
 }
@@ -23,6 +24,9 @@ pub struct ProjectAuthor {
 pub struct ProjectInfo {
     /// 插件包名称，用于标识和产物命名
     pub name: String,
+
+    /// 插件版本号（作者声明）
+    pub version: Option<String>,
 
     /// 项目语言标识 (如 rust, go, ts, python, php, lua)
     /// 该字段决定了 CLI 采用何种构建策略
@@ -81,6 +85,12 @@ pub fn load() -> Result<ProjectConfig> {
 
     let config: ProjectConfig =
         toml::from_str(&content).context("Failed to parse vtx.toml content")?;
+
+    if let Some(version) = config.vtx_version {
+        if version != 1 {
+            anyhow::bail!("Unsupported vtx.toml version: {version}");
+        }
+    }
 
     Ok(config)
 }

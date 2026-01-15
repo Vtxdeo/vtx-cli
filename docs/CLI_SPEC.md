@@ -34,18 +34,25 @@ plugins for all SDK-supported languages.
 Minimum required fields:
 
 ```toml
+vtx_version = 1
+
 [project]
 name = "my-plugin"
+version = "0.1.0"
 language = "rust" # rust|go|ts|python|php|lua|...
 ```
 
+`vtx_version` is required to identify the config schema.
 `[build]` is optional and only needed when you want to override the default build behavior.
 The CLI injects `.vtx` metadata from `vtx.toml`; SDK version is auto-detected and does not need to be declared.
 
 ### Sections
 
+- top-level
+  - `vtx_version` (number, required): config schema version.
 - `[project]`
   - `name` (string, required): plugin package name.
+  - `version` (string, required): plugin version declared by the author.
   - `language` (string, required): build backend selector.
   - `author` (string, optional): legacy author field, kept for compatibility.
   - `authors` (array, optional): PEP 621-style author list.

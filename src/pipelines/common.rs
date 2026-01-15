@@ -67,6 +67,7 @@ pub fn build_vtx_metadata_json(
     let homepage = project_info.and_then(|p| p.homepage.as_deref());
     let repository = project_info.and_then(|p| p.repository.as_deref());
     let keywords = project_info.and_then(|p| p.keywords.as_ref());
+    let version = project_info.and_then(|p| p.version.as_deref());
 
     let meta = json!({
         "schema": 1,
@@ -77,6 +78,7 @@ pub fn build_vtx_metadata_json(
         "homepage": homepage,
         "repository": repository,
         "keywords": keywords,
+        "version": version,
         "sdk_version": sdk_version,
         "package": package_name,
         "language": language,
