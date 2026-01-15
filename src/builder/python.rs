@@ -69,13 +69,13 @@ impl Builder for PythonBuilder {
 
         let output_file = output_dir.join(format!("{package}.wasm"));
 
-        // 假设 componentize-py 已安装并位于 PATH 中
+        let module_name = package.replace('-', "_");
         let status = Command::new("componentize-py")
             .arg("-d")
             .arg(".")
             .arg("-o")
             .arg(&output_file)
-            .arg(package) // 模块入口
+            .arg(&module_name)
             .status()
             .context(
                 "Failed to execute componentize-py. Ensure pip install componentize-py is run.",

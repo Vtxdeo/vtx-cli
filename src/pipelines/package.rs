@@ -36,7 +36,7 @@ pub fn execute_package_pipeline(input: &str, debug: bool, force: bool) -> Result
         .as_ref()
         .map(|c| c.project.language.as_str())
         .unwrap_or("unknown");
-    let sdk_version = resolve_sdk_version(language, config.as_ref());
+    let sdk_version = resolve_sdk_version(language);
     let metadata_json = build_vtx_metadata_json(
         &package_name,
         language,

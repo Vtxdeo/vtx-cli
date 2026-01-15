@@ -8,13 +8,8 @@ pub fn execute_check_pipeline(debug: bool) -> Result<()> {
     let config = config::load()?;
     let project_info = config.project;
     let build_config = config.build;
-    let sdk_config = config.sdk;
 
     let language = project_info.language;
-
-    if let Some(version) = sdk_config.and_then(|sdk| sdk.version) {
-        println!("{} SDK version declared: {}", "[INFO]".cyan(), version);
-    }
 
     if language.to_lowercase() == "rust" || language.to_lowercase() == "rs" {
         if debug {

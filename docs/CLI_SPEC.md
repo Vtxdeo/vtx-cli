@@ -37,15 +37,10 @@ Minimum required fields:
 [project]
 name = "my-plugin"
 language = "rust" # rust|go|ts|python|php|lua|...
-
-[build]
-cmd = "cargo build --target wasm32-wasip1"
-output_dir = "target/wasm32-wasip1/release"
-artifact = "my_plugin.wasm"
-
-[sdk]
-version = "0.1.8"
 ```
+
+`[build]` is optional and only needed when you want to override the default build behavior.
+The CLI injects `.vtx` metadata from `vtx.toml`; SDK version is auto-detected and does not need to be declared.
 
 ### Sections
 
@@ -63,15 +58,13 @@ version = "0.1.8"
   - `cmd` (string, optional): full custom build command.
   - `output_dir` (string, optional): directory for artifact discovery.
   - `artifact` (string, optional): exact artifact filename.
-- `[sdk]`
-  - `version` (string, optional): SDK version used by the project.
 
 ### Resolution Order
 
 - If `--package` is provided, it overrides `project.name`.
 - If `build.cmd` exists, the CLI executes it and skips default build logic.
 - If `build.output_dir` + `build.artifact` exist, use them directly.
-- Otherwise, fall back to backend-specific discovery rules.
+- Otherwise, fall back to backend-specific defaults and discovery rules.
 
 ## CLI Commands
 

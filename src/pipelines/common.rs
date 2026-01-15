@@ -46,18 +46,11 @@ pub fn resolve_wasm_path(
         .context("Unable to locate compiled artifact")
 }
 
-pub fn resolve_sdk_version(
-    language: &str,
-    config: Option<&config::ProjectConfig>,
-) -> Option<String> {
-    let declared = config
-        .and_then(|c| c.sdk.as_ref())
-        .and_then(|s| s.version.clone());
-
+pub fn resolve_sdk_version(language: &str) -> Option<String> {
     if language.eq_ignore_ascii_case("rust") || language.eq_ignore_ascii_case("rs") {
-        checker::read_rust_sdk_version(Path::new(".")).or(declared)
+        checker::read_rust_sdk_version(Path::new("."))
     } else {
-        declared
+        None
     }
 }
 

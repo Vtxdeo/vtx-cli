@@ -9,7 +9,6 @@ use std::path::Path;
 pub struct ProjectConfig {
     pub project: ProjectInfo,
     pub build: Option<BuildConfig>,
-    pub sdk: Option<SdkConfig>,
 }
 
 /// 项目作者信息
@@ -64,13 +63,6 @@ pub struct BuildConfig {
 
     /// 精确的产物文件名
     pub artifact: Option<String>,
-}
-
-/// SDK 配置
-#[derive(Deserialize, Debug, Clone)]
-pub struct SdkConfig {
-    /// SDK 版本
-    pub version: Option<String>,
 }
 
 /// 加载并解析当前目录下的 vtx.toml 配置文件

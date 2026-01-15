@@ -10,9 +10,8 @@ pub fn rust_lib_rs() -> String {
 }
 
 pub fn rust_vtx_toml(name: &str) -> String {
-    let crate_name = name.replace('-', "_");
     format!(
-        "[project]\nname = \"{name}\"\nlanguage = \"rust\"\nauthors = [{{ name = \"Your Name\", email = \"you@example.com\" }}]\ndescription = \"Short plugin summary\"\nlicense = \"MIT\"\nhomepage = \"https://example.com\"\nrepository = \"https://example.com/repo\"\nkeywords = [\"vtx\", \"plugin\"]\n\n[build]\ncmd = \"cargo build --target wasm32-wasip1 --release\"\noutput_dir = \"target/wasm32-wasip1/release\"\nartifact = \"{crate_name}.wasm\"\n\n[sdk]\nversion = \"0.1.8\"\n"
+        "[project]\nname = \"{name}\"\nlanguage = \"rust\"\nauthors = [{{ name = \"Your Name\", email = \"you@example.com\" }}]\ndescription = \"Short plugin summary\"\nlicense = \"MIT\"\nhomepage = \"https://example.com\"\nrepository = \"https://example.com/repo\"\nkeywords = [\"vtx\", \"plugin\"]\n"
     )
 }
 
@@ -28,7 +27,7 @@ pub fn ts_index_ts() -> String {
 
 pub fn ts_vtx_toml(name: &str) -> String {
     format!(
-        "[project]\nname = \"{name}\"\nlanguage = \"ts\"\nauthors = [{{ name = \"Your Name\", email = \"you@example.com\" }}]\ndescription = \"Short plugin summary\"\nlicense = \"MIT\"\nhomepage = \"https://example.com\"\nrepository = \"https://example.com/repo\"\nkeywords = [\"vtx\", \"plugin\"]\n\n[build]\ncmd = \"npm run build\"\noutput_dir = \"dist\"\nartifact = \"{name}.wasm\"\n\n[sdk]\nversion = \"0.2.0\"\n"
+        "[project]\nname = \"{name}\"\nlanguage = \"ts\"\nauthors = [{{ name = \"Your Name\", email = \"you@example.com\" }}]\ndescription = \"Short plugin summary\"\nlicense = \"MIT\"\nhomepage = \"https://example.com\"\nrepository = \"https://example.com/repo\"\nkeywords = [\"vtx\", \"plugin\"]\n"
     )
 }
 
@@ -43,8 +42,7 @@ pub fn python_init_py() -> String {
 }
 
 pub fn python_vtx_toml(name: &str) -> String {
-    let module_name = name.replace('-', "_");
     format!(
-        "[project]\nname = \"{name}\"\nlanguage = \"python\"\nauthors = [{{ name = \"Your Name\", email = \"you@example.com\" }}]\ndescription = \"Short plugin summary\"\nlicense = \"MIT\"\nhomepage = \"https://example.com\"\nrepository = \"https://example.com/repo\"\nkeywords = [\"vtx\", \"plugin\"]\n\n[build]\ncmd = \"componentize-py -d . -o dist/{name}.wasm {module_name}\"\noutput_dir = \"dist\"\nartifact = \"{name}.wasm\"\n\n[sdk]\nversion = \"0.2.0\"\n"
+        "[project]\nname = \"{name}\"\nlanguage = \"python\"\nauthors = [{{ name = \"Your Name\", email = \"you@example.com\" }}]\ndescription = \"Short plugin summary\"\nlicense = \"MIT\"\nhomepage = \"https://example.com\"\nrepository = \"https://example.com/repo\"\nkeywords = [\"vtx\", \"plugin\"]\n"
     )
 }

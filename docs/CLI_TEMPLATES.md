@@ -27,19 +27,10 @@ license = "MIT"
 homepage = "https://example.com"
 repository = "https://example.com/repo"
 keywords = ["vtx", "plugin"]
-
-[build]
-cmd = "cargo build --target wasm32-wasip1 --release"
-output_dir = "target/wasm32-wasip1/release"
-artifact = "my_rust_plugin.wasm"
-
-[sdk]
-version = "0.1.8"
 ```
 
 Notes:
-- `artifact` uses Rust crate naming (`-` becomes `_`) for the wasm output.
-- If you omit `[build]`, the CLI will use the Rust backend defaults.
+- `[build]` is optional and only needed to override the default Rust backend.
  - `vtx init --lang rust --name my-rust-plugin` generates this layout.
 
 ## TypeScript
@@ -68,19 +59,10 @@ license = "MIT"
 homepage = "https://example.com"
 repository = "https://example.com/repo"
 keywords = ["vtx", "plugin"]
-
-[build]
-cmd = "npm run build"
-output_dir = "dist"
-artifact = "my-ts-plugin.wasm"
-
-[sdk]
-version = "0.2.0"
 ```
 
 Notes:
-- `build.cmd` is required if your build toolchain is non-standard.
-- The CLI will use `output_dir` + `artifact` for exact output resolution.
+- `[build]` is optional and only needed to override the default TS backend.
  - `vtx init --lang ts --name my-ts-plugin` generates this layout.
 
 ## Python
@@ -110,17 +92,8 @@ license = "MIT"
 homepage = "https://example.com"
 repository = "https://example.com/repo"
 keywords = ["vtx", "plugin"]
-
-[build]
-cmd = "componentize-py -d . -o dist/my-py-plugin.wasm my_py_plugin"
-output_dir = "dist"
-artifact = "my-py-plugin.wasm"
-
-[sdk]
-version = "0.2.0"
 ```
 
 Notes:
-- If `build.cmd` is omitted, the CLI defaults to `componentize-py`.
-- `artifact` should match the generated wasm filename.
+- `[build]` is optional and only needed to override the default Python backend.
  - `vtx init --lang python --name my-py-plugin` generates this layout.
