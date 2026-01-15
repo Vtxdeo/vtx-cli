@@ -124,12 +124,11 @@ pub fn execute_build_pipeline(
     let component_bytes = packager::process_wasm(&wasm_path, debug, force)
         .context("Component packaging or validation failed")?;
 
-    let author = project_info.as_ref().and_then(|p| p.author.clone());
     let sdk_version = resolve_sdk_version(language, config.as_ref());
     let metadata_json = build_vtx_metadata_json(
         &package_name,
         language,
-        author.as_deref(),
+        project_info.as_ref(),
         sdk_version.as_deref(),
     )?;
 

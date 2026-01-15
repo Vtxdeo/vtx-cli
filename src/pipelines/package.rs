@@ -36,12 +36,11 @@ pub fn execute_package_pipeline(input: &str, debug: bool, force: bool) -> Result
         .as_ref()
         .map(|c| c.project.language.as_str())
         .unwrap_or("unknown");
-    let author = config.as_ref().and_then(|c| c.project.author.clone());
     let sdk_version = resolve_sdk_version(language, config.as_ref());
     let metadata_json = build_vtx_metadata_json(
         &package_name,
         language,
-        author.as_deref(),
+        config.as_ref().map(|c| &c.project),
         sdk_version.as_deref(),
     )?;
 

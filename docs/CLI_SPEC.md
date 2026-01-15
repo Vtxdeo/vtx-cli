@@ -52,6 +52,13 @@ version = "0.1.8"
 - `[project]`
   - `name` (string, required): plugin package name.
   - `language` (string, required): build backend selector.
+  - `author` (string, optional): legacy author field, kept for compatibility.
+  - `authors` (array, optional): PEP 621-style author list.
+  - `description` (string, optional): short summary.
+  - `license` (string, optional): license identifier.
+  - `homepage` (string, optional): project homepage URL.
+  - `repository` (string, optional): source repository URL.
+  - `keywords` (array, optional): search keywords.
 - `[build]`
   - `cmd` (string, optional): full custom build command.
   - `output_dir` (string, optional): directory for artifact discovery.

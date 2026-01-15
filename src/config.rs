@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
 
@@ -10,6 +10,13 @@ pub struct ProjectConfig {
     pub project: ProjectInfo,
     pub build: Option<BuildConfig>,
     pub sdk: Option<SdkConfig>,
+}
+
+/// 项目作者信息
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct ProjectAuthor {
+    pub name: Option<String>,
+    pub email: Option<String>,
 }
 
 /// 项目基础元数据
@@ -24,6 +31,24 @@ pub struct ProjectInfo {
 
     /// 插件作者（用于写入 .vtx 元数据，便于仓库与安全扫描）
     pub author: Option<String>,
+
+    /// 作者列表（PEP 621 风格）
+    pub authors: Option<Vec<ProjectAuthor>>,
+
+    /// 项目描述
+    pub description: Option<String>,
+
+    /// 许可证标识
+    pub license: Option<String>,
+
+    /// 主页链接
+    pub homepage: Option<String>,
+
+    /// 仓库地址
+    pub repository: Option<String>,
+
+    /// 关键词
+    pub keywords: Option<Vec<String>>,
 }
 
 /// 构建配置

@@ -64,12 +64,26 @@ pub fn resolve_sdk_version(
 pub fn build_vtx_metadata_json(
     package_name: &str,
     language: &str,
-    author: Option<&str>,
+    project_info: Option<&config::ProjectInfo>,
     sdk_version: Option<&str>,
 ) -> Result<Vec<u8>> {
+    let author = project_info.and_then(|p| p.author.as_deref());
+    let authors = project_info.and_then(|p| p.authors.as_ref());
+    let description = project_info.and_then(|p| p.description.as_deref());
+    let license = project_info.and_then(|p| p.license.as_deref());
+    let homepage = project_info.and_then(|p| p.homepage.as_deref());
+    let repository = project_info.and_then(|p| p.repository.as_deref());
+    let keywords = project_info.and_then(|p| p.keywords.as_ref());
+
     let meta = json!({
         "schema": 1,
         "author": author,
+        "authors": authors,
+        "description": description,
+        "license": license,
+        "homepage": homepage,
+        "repository": repository,
+        "keywords": keywords,
         "sdk_version": sdk_version,
         "package": package_name,
         "language": language,

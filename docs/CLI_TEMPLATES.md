@@ -21,6 +21,12 @@ my-rust-plugin/
 [project]
 name = "my-rust-plugin"
 language = "rust"
+authors = [{ name = "Your Name", email = "you@example.com" }]
+description = "Short plugin summary"
+license = "MIT"
+homepage = "https://example.com"
+repository = "https://example.com/repo"
+keywords = ["vtx", "plugin"]
 
 [build]
 cmd = "cargo build --target wasm32-wasip1 --release"
@@ -56,6 +62,12 @@ my-ts-plugin/
 [project]
 name = "my-ts-plugin"
 language = "ts"
+authors = [{ name = "Your Name", email = "you@example.com" }]
+description = "Short plugin summary"
+license = "MIT"
+homepage = "https://example.com"
+repository = "https://example.com/repo"
+keywords = ["vtx", "plugin"]
 
 [build]
 cmd = "npm run build"
@@ -92,6 +104,12 @@ my-py-plugin/
 [project]
 name = "my-py-plugin"
 language = "python"
+authors = [{ name = "Your Name", email = "you@example.com" }]
+description = "Short plugin summary"
+license = "MIT"
+homepage = "https://example.com"
+repository = "https://example.com/repo"
+keywords = ["vtx", "plugin"]
 
 [build]
 cmd = "componentize-py -d . -o dist/my-py-plugin.wasm my_py_plugin"
