@@ -1,12 +1,13 @@
-use super::Builder;
+﻿use super::Builder;
 use crate::config::BuildConfig;
 use anyhow::{Context, Result};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-/// Lua 构建器
+/// Lua builder.
 ///
-/// 说明：Lua 生态无统一 Wasm 构建标准，强烈依赖用户配置的 build.cmd。
+/// Note: the Lua ecosystem lacks a standard Wasm build flow, so it relies on
+/// user-provided build.cmd.
 pub struct LuaBuilder {
     pub build_config: Option<BuildConfig>,
 }
@@ -27,7 +28,7 @@ impl Builder for LuaBuilder {
     }
 
     fn build(&self, _package: &str, _target: &str, _release: bool) -> Result<()> {
-        // 1. 必须提供自定义命令
+        // 1. Custom command is required if provided.
         if let Some(cmd) = self.build_config.as_ref().and_then(|c| c.cmd.as_ref()) {
             let (shell, arg) = if cfg!(target_os = "windows") {
                 ("cmd", "/C")
@@ -41,7 +42,7 @@ impl Builder for LuaBuilder {
             return Ok(());
         }
 
-        // 2. 备选方案：检查 Makefile
+        // 2. Fallback: check for Makefile.
         if Path::new("Makefile").exists() {
             println!("[VTX] Makefile detected, running 'make'...");
             let status = Command::new("make")

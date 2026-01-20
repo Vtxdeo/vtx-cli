@@ -1,12 +1,12 @@
-use super::Builder;
+﻿use super::Builder;
 use crate::config::BuildConfig;
 use anyhow::{Context, Result};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-/// PHP 构建器
+/// PHP builder.
 ///
-/// 依赖：Composer (推荐) 或用户自定义脚本。
+/// Dependencies: Composer (recommended) or user-defined scripts.
 pub struct PhpBuilder {
     pub build_config: Option<BuildConfig>,
 }
@@ -27,7 +27,7 @@ impl Builder for PhpBuilder {
     }
 
     fn build(&self, _package: &str, _target: &str, _release: bool) -> Result<()> {
-        // 1. 自定义命令优先
+        // 1. Custom command takes priority.
         if let Some(cmd) = self.build_config.as_ref().and_then(|c| c.cmd.as_ref()) {
             let (shell, arg) = if cfg!(target_os = "windows") {
                 ("cmd", "/C")
@@ -41,7 +41,7 @@ impl Builder for PhpBuilder {
             return Ok(());
         }
 
-        // 2. 默认行为：执行 composer run build
+        // 2. Default behavior: run composer build script.
         let composer = if cfg!(target_os = "windows") {
             "composer.bat"
         } else {

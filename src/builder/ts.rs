@@ -1,13 +1,13 @@
-use super::Builder;
+﻿use super::Builder;
 use crate::config::BuildConfig;
 use anyhow::{Context, Result};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-/// TS/JS 构建器 (NPM 生态)
+/// TS/JS builder (NPM ecosystem).
 ///
-/// 职责：代理执行 NPM Scripts。
-/// 依赖：系统需安装 Node.js 和 npm。
+/// Responsibilities: execute NPM scripts.
+/// Dependencies: Node.js and npm must be installed.
 pub struct TsBuilder {
     pub build_config: Option<BuildConfig>,
 }
@@ -39,7 +39,7 @@ impl Builder for TsBuilder {
             "npm"
         };
 
-        // 1. 优先执行用户配置的自定义命令
+        // 1. Run user-provided custom command first.
         if let Some(cmd) = self.build_config.as_ref().and_then(|c| c.cmd.as_ref()) {
             let (shell, arg) = if cfg!(target_os = "windows") {
                 ("cmd", "/C")
@@ -53,7 +53,7 @@ impl Builder for TsBuilder {
             return Ok(());
         }
 
-        // 2. 检查依赖完整性 (Side Effect: 可能触发网络 IO)
+        // 2. Ensure dependencies are present (may trigger network IO).
         if Path::new("package.json").exists() && !Path::new("node_modules").exists() {
             println!("[VTX] node_modules not found, running npm install...");
             let status = Command::new(npm_cmd).arg("install").status()?;
@@ -62,7 +62,7 @@ impl Builder for TsBuilder {
             }
         }
 
-        // 3. 执行标准 npm run build
+        // 3. Run standard npm build script.
         println!("[VTX] Executing: {npm_cmd} run build");
         let status = Command::new(npm_cmd).arg("run").arg("build").status()?;
 
@@ -74,7 +74,7 @@ impl Builder for TsBuilder {
     }
 
     fn find_output(&self, package: &str, _target: &str, _release: bool) -> Result<PathBuf> {
-        // 策略1: 优先查找配置指定的 output_dir
+        // Strategy 1: use configured output_dir first.
         if let Some(dir) = self
             .build_config
             .as_ref()
@@ -85,7 +85,7 @@ impl Builder for TsBuilder {
                 return Ok(p);
             }
 
-            // 降级策略: 目录内模糊匹配
+            // Fallback: fuzzy match inside the directory.
             if let Ok(entries) = std::fs::read_dir(dir) {
                 for entry in entries.flatten() {
                     if entry.path().extension().is_some_and(|e| e == "wasm") {
@@ -95,7 +95,7 @@ impl Builder for TsBuilder {
             }
         }
 
-        // 策略2: 标准目录启发式搜索
+        // Strategy 2: heuristic search in standard directories.
         let search_dirs = vec!["build", "dist", "target", "."];
         let candidates = vec![
             format!("{package}.wasm"),

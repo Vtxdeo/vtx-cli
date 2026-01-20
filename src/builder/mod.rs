@@ -1,4 +1,4 @@
-use crate::config::BuildConfig;
+﻿use crate::config::BuildConfig;
 use anyhow::Result;
 use std::path::PathBuf;
 
@@ -9,42 +9,43 @@ pub mod python;
 pub mod rust;
 pub mod ts;
 
-/// 构建流水线接口
+/// Build pipeline interface.
 ///
-/// 该 Trait 定义了将源码转换为中间态 Wasm 文件的标准生命周期。
-/// 实现者应当遵循无状态原则，或明确标注对文件系统的副作用。
+/// This trait defines the standard lifecycle for turning source code into
+/// an intermediate Wasm artifact. Implementations should be stateless or
+/// explicitly document file system side effects.
 pub trait Builder {
-    /// 阶段 1: 环境预检
+    /// Stage 1: environment pre-check.
     ///
-    /// 验证宿主环境是否满足构建要求。
+    /// Verify the host environment meets build requirements.
     ///
-    /// # 行为说明
-    /// - 应通过执行 `--version` 等轻量命令检查工具链是否存在。
-    /// - 若检查失败，必须返回包含具体安装建议的 Error。
+    /// # Behavior
+    /// - Use lightweight commands like `--version` to check toolchain presence.
+    /// - If checks fail, return an error with concrete installation guidance.
     fn check_env(&self) -> Result<()>;
 
-    /// 阶段 2: 执行构建
+    /// Stage 2: build execution.
     ///
-    /// 调用底层工具链进行编译。
+    /// Invoke the underlying toolchain for compilation.
     ///
-    /// # 参数
-    /// - `package`: 包名，用于指定构建目标或传递给构建脚本。
-    /// - `target`: 目标架构标识（如 wasm32-wasi）。
-    /// - `release`: 构建模式，true 表示优化后的发布模式。
+    /// # Parameters
+    /// - `package`: Package name used for targets or build scripts.
+    /// - `target`: Target architecture identifier (e.g. wasm32-wasi).
+    /// - `release`: Build mode; true for optimized release builds.
     ///
-    /// # 副作用
-    /// - 产生磁盘 IO，生成编译中间产物。
-    /// - 可能消耗大量 CPU/内存资源。
-    /// - 可能会向 stdout/stderr 写入底层工具链的日志。
+    /// # Side effects
+    /// - Produces disk IO and intermediate artifacts.
+    /// - May consume significant CPU/memory.
+    /// - May write toolchain logs to stdout/stderr.
     fn build(&self, package: &str, target: &str, release: bool) -> Result<()>;
 
-    /// 阶段 3: 产物定位
+    /// Stage 3: artifact resolution.
     ///
-    /// 在构建完成后，定位最终生成的 Wasm 文件路径。
+    /// Locate the final Wasm output after the build finishes.
     ///
-    /// # 返回值
-    /// - 成功：返回绝对路径或相对于执行目录的路径。
-    /// - 失败：若找不到文件或存在歧义，返回 Error。
+    /// # Returns
+    /// - Success: absolute or execution-relative path.
+    /// - Failure: error if file is missing or ambiguous.
     fn find_output(&self, package: &str, target: &str, release: bool) -> Result<PathBuf>;
 }
 

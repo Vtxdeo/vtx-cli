@@ -1,12 +1,12 @@
-use super::Builder;
+﻿use super::Builder;
 use crate::config::BuildConfig;
 use anyhow::{Context, Result};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-/// Python 构建器
+/// Python builder.
 ///
-/// 依赖：componentize-py (用于将 Python 转换为 Wasm Component)
+/// Dependency: componentize-py (to convert Python into a Wasm Component).
 pub struct PythonBuilder {
     pub build_config: Option<BuildConfig>,
 }
@@ -39,7 +39,7 @@ impl Builder for PythonBuilder {
     }
 
     fn build(&self, package: &str, _target: &str, _release: bool) -> Result<()> {
-        // 1. 自定义命令优先
+        // 1. Custom command takes priority.
         if let Some(cmd) = self.build_config.as_ref().and_then(|c| c.cmd.as_ref()) {
             println!("[VTX] Executing custom build command: {cmd}");
             let (shell, arg) = if cfg!(target_os = "windows") {
@@ -59,7 +59,7 @@ impl Builder for PythonBuilder {
             return Ok(());
         }
 
-        // 2. 默认使用 componentize-py
+        // 2. Default to componentize-py.
         println!("[VTX] No 'build.cmd' found, defaulting to 'componentize-py'...");
 
         let output_dir = Path::new("dist");

@@ -1,19 +1,19 @@
-use anyhow::{Context, Result};
+﻿use anyhow::{Context, Result};
 use colored::*;
 use std::path::Path;
 use toml::Table;
 
-/// 检查 Rust 项目的 SDK 依赖兼容性
+/// Check SDK dependency compatibility for a Rust project.
 ///
-/// 职责：
-/// 读取项目根目录下的 Cargo.toml，解析其 `vtx-sdk` 依赖版本，
-/// 并与 CLI 内置的 SDK 元数据版本进行比对。
+/// Responsibilities:
+/// Read Cargo.toml in the project root, parse the `vtx-sdk` dependency version,
+/// and compare it against the SDK metadata version bundled with the CLI.
 ///
-/// 行为：
-/// - 若 Cargo.toml 不存在，静默跳过（非 Rust 项目）。
-/// - 若发现版本不兼容：
-///   - 默认抛出错误终止构建。
-///   - 若 `force` 为 true，则仅打印警告日志。
+/// Behavior:
+/// - If Cargo.toml is missing, skip silently (not a Rust project).
+/// - If versions are incompatible:
+///   - By default, return an error and stop the build.
+///   - If `force` is true, print a warning only.
 pub fn check_rust_sdk_version(project_dir: &Path, force: bool) -> Result<()> {
     let cargo_toml_path = project_dir.join("Cargo.toml");
     if !cargo_toml_path.exists() {
@@ -23,8 +23,7 @@ pub fn check_rust_sdk_version(project_dir: &Path, force: bool) -> Result<()> {
     let content = std::fs::read_to_string(&cargo_toml_path).context("Failed to read Cargo.toml")?;
     let table: Table = toml::from_str(&content)?;
 
-    // 获取依赖中的 vtx-sdk 版本
-    // 优先检查 [dependencies]，其次检查 [dev-dependencies]
+    // Get vtx-sdk version from dependencies, then dev-dependencies.
     let version = table
         .get("dependencies")
         .and_then(|d| d.get("vtx-sdk"))
@@ -36,9 +35,9 @@ pub fn check_rust_sdk_version(project_dir: &Path, force: bool) -> Result<()> {
                 .as_str()
                 .or_else(|| v.get("version").and_then(|value| value.as_str()))
                 .unwrap_or("unknown");
-            let cli_target_ver = vtx_sdk::VERSION; // 来自 SDK 常量
+            let cli_target_ver = vtx_sdk::VERSION; // From SDK constant.
 
-            // 检查版本兼容性
+            // Check version compatibility.
             if !is_compatible(user_ver, cli_target_ver) {
                 let msg = format!(
                     "SDK Version Mismatch: Plugin uses vtx-sdk {user_ver}, but this CLI is optimized for v{cli_target_ver}."
@@ -60,7 +59,7 @@ pub fn check_rust_sdk_version(project_dir: &Path, force: bool) -> Result<()> {
             }
         }
         None => {
-            // 如果是 Rust 项目但没有 vtx-sdk，可能是裸写 Wasm 或间接依赖，发出警告
+            // Rust project without vtx-sdk might be raw Wasm or indirect deps.
             println!(
                 "{} Warning: 'vtx-sdk' dependency not found in Cargo.toml.",
                 "[WARN]".yellow()
@@ -70,7 +69,7 @@ pub fn check_rust_sdk_version(project_dir: &Path, force: bool) -> Result<()> {
     Ok(())
 }
 
-/// 读取 Rust 项目中声明的 vtx-sdk 版本（来自 Cargo.toml）。
+/// Read the declared vtx-sdk version from Cargo.toml in a Rust project.
 pub fn read_rust_sdk_version(project_dir: &Path) -> Option<String> {
     let cargo_toml_path = project_dir.join("Cargo.toml");
     if !cargo_toml_path.exists() {
@@ -92,10 +91,10 @@ pub fn read_rust_sdk_version(project_dir: &Path) -> Option<String> {
     Some(user_ver.trim_start_matches(['^', '~', '=']).to_string())
 }
 
-/// 简易版本兼容性检查
+/// Simple version compatibility check.
 ///
-/// 逻辑：
-/// 移除 semver 的修饰符（^, ~, =）后，要求版本号字符串完全匹配。
+/// Logic:
+/// Remove semver prefixes (^, ~, =) and require an exact match.
 fn is_compatible(user: &str, system: &str) -> bool {
     let clean_user = user.trim_start_matches(['^', '~', '=']);
     clean_user == system

@@ -1,15 +1,15 @@
-use super::Builder;
+﻿use super::Builder;
 use anyhow::{Context, Result};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-/// Rust 语言构建器
+/// Rust builder.
 ///
-/// 职责：封装 Cargo 工具链的调用逻辑，用于构建 Rust 编写的插件。
+/// Responsibilities: wrap Cargo toolchain calls to build Rust plugins.
 pub struct RustBuilder;
 
 impl Builder for RustBuilder {
-    /// 检查 cargo 工具链是否可用
+    /// Check cargo toolchain availability.
     fn check_env(&self) -> Result<()> {
         Command::new("cargo")
             .arg("--version")
@@ -18,17 +18,17 @@ impl Builder for RustBuilder {
         Ok(())
     }
 
-    /// 执行 `cargo build` 命令
+    /// Run `cargo build`.
     ///
-    /// # 复杂度
-    /// - 依赖于 Cargo 构建过程，时间复杂度不定。
+    /// # Complexity
+    /// - Depends on the Cargo build process; runtime varies.
     fn build(&self, package: &str, target: &str, release: bool) -> Result<()> {
         let mut args: Vec<&str> = vec!["build", "--target", target, "-p", package];
         if release {
             args.push("--release");
         }
 
-        // 执行 cargo build 命令
+        // Run cargo build.
         let status = Command::new("cargo")
             .args(args)
             .status()
@@ -41,11 +41,11 @@ impl Builder for RustBuilder {
         Ok(())
     }
 
-    /// 定位 Cargo 构建生成的 Wasm 文件
+    /// Locate Cargo-produced Wasm output.
     ///
-    /// # 逻辑
-    /// - 首先尝试常见的命名规则（crate_name.wasm, libcrate_name.wasm 等）。
-    /// - 如果未找到，扫描目标目录下的所有 .wasm 文件。
+    /// # Logic
+    /// - Try common naming conventions (crate_name.wasm, libcrate_name.wasm, etc.).
+    /// - If not found, scan all .wasm files in the target directory.
     fn find_output(&self, package: &str, target: &str, release: bool) -> Result<PathBuf> {
         let profile_dir = if release { "release" } else { "debug" };
         let dir = Path::new("target").join(target).join(profile_dir);
@@ -54,10 +54,10 @@ impl Builder for RustBuilder {
             anyhow::bail!("Target directory does not exist: {}", dir.display());
         }
 
-        // 将包名中的 '-' 替换为 '_'，符合 Rust crate 命名规范
+        // Replace '-' with '_' to follow Rust crate naming rules.
         let crate_name = package.replace('-', "_");
 
-        // 定义常见的输出文件名候选列表
+        // Common output file name candidates.
         let candidates = [
             format!("{crate_name}.wasm"),
             format!("lib{crate_name}.wasm"),
@@ -65,7 +65,7 @@ impl Builder for RustBuilder {
             format!("lib{package}.wasm"),
         ];
 
-        // 策略 1: 尝试精确匹配常见文件名
+        // Strategy 1: exact match on common names.
         for name in candidates {
             let p = dir.join(&name);
             if p.exists() {
@@ -73,7 +73,7 @@ impl Builder for RustBuilder {
             }
         }
 
-        // 策略 2: 扫描目录查找包含 crate_name 的 wasm 文件
+        // Strategy 2: scan directory for wasm files containing crate_name.
         let rd = std::fs::read_dir(&dir)
             .with_context(|| format!("Failed to read dir: {}", dir.display()))?;
 
