@@ -1,7 +1,7 @@
-﻿use anyhow::{Context, Result};
+use anyhow::{Context, Result};
 use colored::*;
 use std::path::{Path, PathBuf};
-use wasmparser::{Chunk, Parser as WasmParser, Payload};
+use wasmparser::{Chunk, Encoding, Parser as WasmParser, Payload};
 use wit_component::ComponentEncoder;
 
 use wasi_preview1_component_adapter_provider::{
@@ -29,6 +29,20 @@ pub fn process_wasm(input_wasm_path: &Path, debug: bool, force: bool) -> Result<
             input_wasm_path.display()
         )
     })?;
+
+    // Fast path: already a component, skip adapter injection and encoding.
+    if is_component(&module_bytes)
+        .with_context(|| "Failed to parse wasm header for component detection")?
+    {
+        println!(
+            "{} Input is already a WebAssembly component; skipping adapter injection and encoding.",
+            "[INFO]".cyan()
+        );
+
+        validate_contract_with_force(&module_bytes, debug, force)?;
+
+        return Ok(module_bytes);
+    }
 
     // Step 1: metadata cleanup.
     // The cleaned module represents the user's compiled core logic.
@@ -61,17 +75,7 @@ pub fn process_wasm(input_wasm_path: &Path, debug: bool, force: bool) -> Result<
 
     // Step 5: contract validation (Export Check).
     // Ensure the generated component matches VTX Kernel interfaces.
-    if let Err(e) = validate_contract(&component_bytes, debug) {
-        if force {
-            println!(
-                "{} Contract validation failed but --force is enabled: {}",
-                "[WARN]".yellow(),
-                e
-            );
-        } else {
-            return Err(e);
-        }
-    }
+    validate_contract_with_force(&component_bytes, debug, force)?;
 
     Ok(component_bytes)
 }
@@ -141,6 +145,36 @@ fn validate_user_imports(module_bytes: &[u8], debug: bool) {
             }
         }
     }
+}
+
+fn validate_contract_with_force(component_bytes: &[u8], debug: bool, force: bool) -> Result<()> {
+    if let Err(e) = validate_contract(component_bytes, debug) {
+        if force {
+            println!(
+                "{} Contract validation failed but --force is enabled: {}",
+                "[WARN]".yellow(),
+                e
+            );
+            return Ok(());
+        }
+        return Err(e);
+    }
+
+    Ok(())
+}
+
+/// Determine whether the input is already a WebAssembly Component.
+fn is_component(bytes: &[u8]) -> Result<bool> {
+    let parser = WasmParser::new(0);
+
+    for payload in parser.parse_all(bytes) {
+        let payload = payload?;
+        if let Payload::Version { encoding, .. } = payload {
+            return Ok(matches!(encoding, Encoding::Component));
+        }
+    }
+
+    Ok(false)
 }
 
 /// Validate that the generated component exports required kernel interfaces.
