@@ -62,10 +62,14 @@ pub enum Commands {
     Init {
         /// Project name (creates a new directory)
         #[arg(short, long)]
-        name: String,
+        name: Option<String>,
 
         /// Language (rust|ts|python)
         #[arg(short, long)]
-        language: String,
+        language: Option<String>,
+
+        /// Launch interactive initializer
+        #[arg(long, default_value_t = false)]
+        interactive: bool,
     },
 }

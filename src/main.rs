@@ -56,6 +56,10 @@ fn run(cli: Cli) -> Result<()> {
             force,
             debug,
         } => execute_package_pipeline(&input, debug, force),
-        Commands::Init { name, language } => execute_init_pipeline(&name, &language),
+        Commands::Init {
+            name,
+            language,
+            interactive,
+        } => execute_init_pipeline(name.as_deref(), language.as_deref(), interactive),
     }
 }
