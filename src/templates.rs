@@ -5,8 +5,14 @@ pub fn rust_cargo_toml(name: &str) -> String {
 }
 
 pub fn rust_lib_rs() -> String {
-    "use vtx_sdk::{export_plugin, VtxPlugin};\n\n#[derive(Default)]\nstruct Plugin;\n\nimpl VtxPlugin for Plugin {}\n\nexport_plugin!(Plugin);\n"
+    "use vtx_sdk::prelude::*;\n\nmod config;\n\n#[derive(Default)]\nstruct Plugin;\n\nimpl VtxPlugin for Plugin {\n    fn get_manifest() -> Manifest {\n        Manifest {\n            id: config::PLUGIN_ID.to_string(),\n            name: config::PLUGIN_NAME.to_string(),\n            version: env!(\"CARGO_PKG_VERSION\").to_string(),\n            description: config::PLUGIN_DESC.to_string(),\n            entrypoint: config::ENTRYPOINT.to_string(),\n        }\n    }\n\n    fn get_capabilities() -> Capabilities {\n        Capabilities {\n            subscriptions: config::SUBSCRIPTIONS.iter().map(|s| s.to_string()).collect(),\n            permissions: config::PERMISSIONS.iter().map(|p| p.to_string()).collect(),\n            http: None,\n        }\n    }\n}\n\nexport_plugin!(Plugin);\n"
         .to_string()
+}
+
+pub fn rust_config_rs(name: &str) -> String {
+    format!(
+        "// Centralized plugin configuration.\n\npub const PLUGIN_ID: &str = \"vtx.{name}\";\npub const PLUGIN_NAME: &str = \"{name}\";\npub const PLUGIN_DESC: &str = \"Short plugin summary\";\npub const ENTRYPOINT: &str = \"/\";\n\npub const SUBSCRIPTIONS: &[&str] = &[];\npub const PERMISSIONS: &[&str] = &[];\n"
+    )
 }
 
 pub fn rust_vtx_toml(name: &str) -> String {

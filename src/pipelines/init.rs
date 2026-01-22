@@ -67,6 +67,7 @@ fn init_rust(project_dir: &Path, name: &str) -> Result<()> {
         templates::rust_cargo_toml(name),
     )?;
     std::fs::write(src_dir.join("lib.rs"), templates::rust_lib_rs())?;
+    std::fs::write(src_dir.join("config.rs"), templates::rust_config_rs(name))?;
     std::fs::write(project_dir.join("vtx.toml"), templates::rust_vtx_toml(name))?;
 
     Ok(())
