@@ -48,7 +48,7 @@ pub fn execute_package_pipeline(input: &str, debug: bool, force: bool) -> Result
         .context("Failed to write final artifact")?;
 
     println!(
-        "{} Package completed 鈫?{}",
+        "{} Package completed:{}",
         "[DONE]".green().bold(),
         vtx_path.display()
     );
